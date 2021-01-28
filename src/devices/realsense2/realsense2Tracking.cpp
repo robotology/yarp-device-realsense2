@@ -217,6 +217,7 @@ bool realsense2Tracking::open(Searchable& config)
         return false;
     }
 
+    m_pose_data.resize(7);
     return true;
 }
 
@@ -459,6 +460,90 @@ bool realsense2Tracking::getPositionSensorMeasure(size_t sens_index, yarp::sig::
     xyz[2] = m_last_pose.translation.z;
     return true;
 }
+/*
+bool realsense2Tracking::read(yarp::sig::Vector& out)
+{
+    std::lock_guard<std::mutex> guard(m_mutex);
+    rs2::frameset dataframe = m_pipeline.wait_for_frames();
+    auto fa = dataframe.first_or_default(RS2_STREAM_POSE);
+    rs2::pose_frame pose = fa.as<rs2::pose_frame>();
+    m_last_pose = pose.get_pose_data();
+
+    out.resize(7);
+    out[0] = m_last_pose.translation.x;
+    out[1] = m_last_pose.translation.y;
+    out[2] = m_last_pose.translation.z;
+    out[3] = m_last_pose.rotation.x;
+    out[4] = m_last_pose.rotation.y;
+    out[5] = m_last_pose.rotation.z;
+    out[6] = m_last_pose.rotation.w;
+
+    return true;
+}
+
+bool realsense2Tracking::getChannels(int* nc)
+{
+    return true;
+}
+
+bool realsense2Tracking::calibrate(int ch, double v)
+{
+    return true;
+}
+*/
+
+int realsense2Tracking::read(yarp::sig::Vector& out)
+{
+    std::lock_guard<std::mutex> guard(m_mutex);
+    rs2::frameset dataframe = m_pipeline.wait_for_frames();
+    auto fa = dataframe.first_or_default(RS2_STREAM_POSE);
+    rs2::pose_frame pose = fa.as<rs2::pose_frame>();
+    m_last_pose = pose.get_pose_data();
+
+    out.resize(7);
+    out[0] = m_last_pose.translation.x;
+    out[1] = m_last_pose.translation.y;
+    out[2] = m_last_pose.translation.z;
+    out[3] = m_last_pose.rotation.x;
+    out[4] = m_last_pose.rotation.y;
+    out[5] = m_last_pose.rotation.z;
+    out[6] = m_last_pose.rotation.w;
+    return 0;
+}
+
+int realsense2Tracking::getState(int ch)
+{
+    return 0;
+}
+
+
+int realsense2Tracking::getChannels()
+{
+    return 7;
+}
+
+int realsense2Tracking::calibrateSensor()
+{
+    return 0;
+}
+
+int realsense2Tracking::calibrateSensor(const yarp::sig::Vector& value)
+{
+    return 0;
+}
+
+int realsense2Tracking::calibrateChannel(int ch)
+{
+    return 0;
+}
+
+int realsense2Tracking::calibrateChannel(int ch, double value)
+{
+    return 0;
+}
+
+
+
 
 //-------------------------------------------------------------------------------------------------------
 #if 0
