@@ -504,10 +504,10 @@ int realsense2Tracking::read(yarp::sig::Vector& out)
     out[0] = m_last_pose.translation.x;
     out[1] = m_last_pose.translation.y;
     out[2] = m_last_pose.translation.z;
-    out[3] = m_last_pose.rotation.x;
-    out[4] = m_last_pose.rotation.y;
-    out[5] = m_last_pose.rotation.z;
-    out[6] = m_last_pose.rotation.w;
+    out[3] = m_last_pose.rotation.w;
+    out[4] = m_last_pose.rotation.x;
+    out[5] = m_last_pose.rotation.y;
+    out[6] = m_last_pose.rotation.z;
     return 0;
 }
 
