@@ -115,7 +115,7 @@ protected:
     mutable std::mutex    m_mutex;
     rs2::pipeline m_pipeline;
     rs2::pipeline_profile m_profile;
-    std::string m_lastError;
+    mutable std::string m_lastError;
     enum timestamp_enumtype {yarp_timestamp=0, rs_timestamp};
     timestamp_enumtype m_timestamp_type;
 

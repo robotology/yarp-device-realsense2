@@ -260,7 +260,17 @@ bool realsense2Tracking::getThreeAxisGyroscopeMeasure(size_t sens_index, yarp::s
     }
 
     std::lock_guard<std::mutex> guard(m_mutex);
-    rs2::frameset dataframe = m_pipeline.wait_for_frames();
+    rs2::frameset dataframe;
+    try
+    {
+        dataframe = m_pipeline.wait_for_frames();
+    }
+    catch (const rs2::error& e)
+    {
+        yCError(REALSENSE2TRACKING) << "m_pipeline.wait_for_frames() failed with error:"<< "(" << e.what() << ")";
+        m_lastError = e.what();
+        return false;
+    }
     auto fg = dataframe.first_or_default(RS2_STREAM_GYRO, RS2_FORMAT_MOTION_XYZ32F);
     rs2::motion_frame gyro = fg.as<rs2::motion_frame>();
     if (m_timestamp_type == yarp_timestamp) { timestamp = yarp::os::Time::now(); }
@@ -307,7 +317,17 @@ bool realsense2Tracking::getThreeAxisLinearAccelerometerMeasure(size_t sens_inde
     if (sens_index != 0) { return false; }
 
     std::lock_guard<std::mutex> guard(m_mutex);
-    rs2::frameset dataframe = m_pipeline.wait_for_frames();
+    rs2::frameset dataframe;
+    try
+    {
+        dataframe = m_pipeline.wait_for_frames();
+    }
+    catch (const rs2::error& e)
+    {
+        yCError(REALSENSE2TRACKING) << "m_pipeline.wait_for_frames() failed with error:"<< "(" << e.what() << ")";
+        m_lastError = e.what();
+        return false;
+    }
     auto fa = dataframe.first_or_default(RS2_STREAM_ACCEL, RS2_FORMAT_MOTION_XYZ32F);
     rs2::motion_frame accel = fa.as<rs2::motion_frame>();
     m_last_accel = accel.get_motion_data();
@@ -355,7 +375,17 @@ bool realsense2Tracking::getOrientationSensorMeasureAsRollPitchYaw(size_t sens_i
     if (sens_index != 0) { return false; }
 
     std::lock_guard<std::mutex> guard(m_mutex);
-    rs2::frameset dataframe = m_pipeline.wait_for_frames();
+    rs2::frameset dataframe;
+    try
+    {
+        dataframe = m_pipeline.wait_for_frames();
+    }
+    catch (const rs2::error& e)
+    {
+        yCError(REALSENSE2TRACKING) << "m_pipeline.wait_for_frames() failed with error:"<< "(" << e.what() << ")";
+        m_lastError = e.what();
+        return false;
+    }
     auto fa = dataframe.first_or_default(RS2_STREAM_POSE);
     rs2::pose_frame pose = fa.as<rs2::pose_frame>();
     m_last_pose = pose.get_pose_data();
@@ -406,7 +436,17 @@ bool realsense2Tracking::getPositionSensorMeasure(size_t sens_index, yarp::sig::
     if (sens_index != 0) { return false; }
 
     std::lock_guard<std::mutex> guard(m_mutex);
-    rs2::frameset dataframe = m_pipeline.wait_for_frames();
+    rs2::frameset dataframe;
+    try
+    {
+        dataframe = m_pipeline.wait_for_frames();
+    }
+    catch (const rs2::error& e)
+    {
+        yCError(REALSENSE2TRACKING) << "m_pipeline.wait_for_frames() failed with error:"<< "(" << e.what() << ")";
+        m_lastError = e.what();
+        return false;
+    }
     auto fa = dataframe.first_or_default(RS2_STREAM_POSE);
     rs2::pose_frame pose = fa.as<rs2::pose_frame>();
     m_last_pose = pose.get_pose_data();
@@ -451,7 +491,17 @@ bool realsense2Tracking::getPoseSensorFrameName(size_t sens_index, std::string& 
 bool realsense2Tracking::getPoseSensorMeasureAsXYZRPY(size_t sens_index, yarp::sig::Vector& xyzrpy, double& timestamp) const
 {
     std::lock_guard<std::mutex> guard(m_mutex);
-    rs2::frameset dataframe = m_pipeline.wait_for_frames();
+    rs2::frameset dataframe;
+    try
+    {
+        dataframe = m_pipeline.wait_for_frames();
+    }
+    catch (const rs2::error& e)
+    {
+        yCError(REALSENSE2TRACKING) << "m_pipeline.wait_for_frames() failed with error:"<< "(" << e.what() << ")";
+        m_lastError = e.what();
+        return false;
+    }
     auto fa = dataframe.first_or_default(RS2_STREAM_ACCEL, RS2_FORMAT_MOTION_XYZ32F);
     rs2::pose_frame pose = fa.as<rs2::pose_frame>();
     m_last_pose = pose.get_pose_data();

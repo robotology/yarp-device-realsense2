@@ -365,7 +365,17 @@ bool realsense2withIMUDriver::getThreeAxisGyroscopeMeasure(size_t sens_index, ya
     }
 
     std::lock_guard<std::mutex> guard(realsense2Driver::m_mutex);
-    rs2::frameset dataframe = m_pipeline.wait_for_frames();
+    rs2::frameset dataframe;
+    try
+    {
+        dataframe = m_pipeline.wait_for_frames();
+    }
+    catch (const rs2::error& e)
+    {
+        yCError(REALSENSE2WITHIMU) << "m_pipeline.wait_for_frames() failed with error:"<< "(" << e.what() << ")";
+        m_lastError = e.what();
+        return false;
+    }
     auto fg = dataframe.first(RS2_STREAM_GYRO, RS2_FORMAT_MOTION_XYZ32F);
     rs2::motion_frame gyro = fg.as<rs2::motion_frame>();
     m_last_gyro = gyro.get_motion_data();
@@ -407,7 +417,17 @@ bool realsense2withIMUDriver::getThreeAxisLinearAccelerometerFrameName(size_t se
 bool realsense2withIMUDriver::getThreeAxisLinearAccelerometerMeasure(size_t sens_index, yarp::sig::Vector& out, double& timestamp) const
 {
     std::lock_guard<std::mutex> guard(m_mutex);
-    rs2::frameset dataframe = m_pipeline.wait_for_frames();
+    rs2::frameset dataframe;
+    try
+    {
+        dataframe = m_pipeline.wait_for_frames();
+    }
+    catch (const rs2::error& e)
+    {
+        yCError(REALSENSE2WITHIMU) << "m_pipeline.wait_for_frames() failed with error:"<< "(" << e.what() << ")";
+        m_lastError = e.what();
+        return false;
+    }
     auto fa = dataframe.first(RS2_STREAM_ACCEL, RS2_FORMAT_MOTION_XYZ32F);
     rs2::motion_frame accel = fa.as<rs2::motion_frame>();
     m_last_accel = accel.get_motion_data();
@@ -463,7 +483,17 @@ bool realsense2withIMUDriver::getOrientationSensorMeasureAsRollPitchYaw(size_t s
     if (m_sensor_has_orientation_estimator)
     {
         std::lock_guard<std::mutex> guard(m_mutex);
-        rs2::frameset dataframe = m_pipeline.wait_for_frames();
+        rs2::frameset dataframe;
+        try
+        {
+            dataframe = m_pipeline.wait_for_frames();
+        }
+        catch (const rs2::error& e)
+        {
+            yCError(REALSENSE2WITHIMU) << "m_pipeline.wait_for_frames() failed with error:"<< "(" << e.what() << ")";
+            m_lastError = e.what();
+            return false;
+        }
         auto motion = dataframe.as<rs2::motion_frame>();
         if (motion && motion.get_profile().stream_type() == RS2_STREAM_GYRO &&
                       motion.get_profile().format() == RS2_FORMAT_MOTION_XYZ32F)
