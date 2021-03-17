@@ -542,7 +542,15 @@ bool realsense2Driver::initializeRealsenseDevice()
     yCInfo(REALSENSE2) << "Sensor warm-up...";
     for (int i = 0; i < 30; i++)
     {
-        m_pipeline.wait_for_frames();
+        try
+        {
+            m_pipeline.wait_for_frames();
+        }
+        catch (const rs2::error& e)
+        {
+            yCError(REALSENSE2) << "m_pipeline.wait_for_frames() failed with error:"<< "(" << e.what() << ")";
+            m_lastError = e.what();
+        }
     }
     yCInfo(REALSENSE2) << "Device ready!";
 
@@ -990,7 +998,17 @@ bool realsense2Driver::getExtrinsicParam(Matrix& extrinsic)
 bool realsense2Driver::getRgbImage(FlexImage& rgbImage, Stamp* timeStamp)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
-    rs2::frameset data = m_pipeline.wait_for_frames();
+    rs2::frameset data;
+    try
+    {
+        data = m_pipeline.wait_for_frames();
+    }
+    catch (const rs2::error& e)
+    {
+        yCError(REALSENSE2) << "m_pipeline.wait_for_frames() failed with error:"<< "(" << e.what() << ")";
+         m_lastError = e.what();
+        return false;
+    }
     if (m_alignment_stream == RS2_STREAM_DEPTH)
     {
         rs2::align align(m_alignment_stream);
@@ -1002,7 +1020,17 @@ bool realsense2Driver::getRgbImage(FlexImage& rgbImage, Stamp* timeStamp)
 bool realsense2Driver::getDepthImage(ImageOf<PixelFloat>& depthImage, Stamp* timeStamp)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
-    rs2::frameset data = m_pipeline.wait_for_frames();
+    rs2::frameset data;
+    try
+    {
+        data = m_pipeline.wait_for_frames();
+    }
+    catch (const rs2::error& e)
+    {
+        yCError(REALSENSE2) << "m_pipeline.wait_for_frames() failed with error:"<< "(" << e.what() << ")";
+        m_lastError = e.what();
+        return false;
+    }
     if (m_alignment_stream == RS2_STREAM_COLOR)
     {
         rs2::align align(m_alignment_stream);
@@ -1080,7 +1108,17 @@ bool realsense2Driver::getImage(depthImage& Frame, Stamp *timeStamp, const rs2::
 bool realsense2Driver::getImages(FlexImage& colorFrame, ImageOf<PixelFloat>& depthFrame, Stamp* colorStamp, Stamp* depthStamp)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
-    rs2::frameset data = m_pipeline.wait_for_frames();
+    rs2::frameset data;
+    try
+    {
+        data = m_pipeline.wait_for_frames();
+    }
+    catch (const rs2::error& e)
+    {
+        yCError(REALSENSE2) << "m_pipeline.wait_for_frames() failed with error:"<< "(" << e.what() << ")";
+        m_lastError = e.what();
+        return false;
+    }
     if (m_alignment_stream != RS2_STREAM_ANY) // RS2_STREAM_ANY is used as no-alignment-needed value.
     {
         rs2::align align(m_alignment_stream);
@@ -1518,7 +1556,17 @@ bool realsense2Driver::getImage(yarp::sig::ImageOf<yarp::sig::PixelMono>& image)
 
     image.resize(width(), height());
     std::lock_guard<std::mutex> guard(m_mutex);
-    rs2::frameset data = m_pipeline.wait_for_frames();
+    rs2::frameset data;
+    try
+    {
+        data = m_pipeline.wait_for_frames();
+    }
+    catch (const rs2::error& e)
+    {
+        yCError(REALSENSE2) << "m_pipeline.wait_for_frames() failed with error:"<< "(" << e.what() << ")";
+        m_lastError = e.what();
+        return false;
+    }
 
     rs2::video_frame frm1 = data.get_infrared_frame(1);
     rs2::video_frame frm2 = data.get_infrared_frame(2);

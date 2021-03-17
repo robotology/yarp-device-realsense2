@@ -133,7 +133,7 @@ protected:
 
     yarp::os::Stamp m_rgb_stamp;
     yarp::os::Stamp m_depth_stamp;
-    std::string m_lastError;
+    mutable std::string m_lastError;
     yarp::dev::RGBDSensorParamParser m_paramParser;
     bool m_verbose;
     bool m_initialized;

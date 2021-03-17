@@ -99,6 +99,7 @@ protected:
     std::string m_accelFrameName;
     std::string m_orientationFrameName;
     std::string m_positionFrameName;
+    mutable std::string m_lastError;
 
     /*std::mutex   m_mutex;
     rs2::context m_ctx;
@@ -116,7 +117,6 @@ protected:
 
     yarp::os::Stamp m_rgb_stamp;
     yarp::os::Stamp m_depth_stamp;
-    std::string m_lastError;
     yarp::dev::RGBDSensorParamParser m_paramParser;
     bool m_verbose;
     bool m_initialized;
