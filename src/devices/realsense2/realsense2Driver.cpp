@@ -362,6 +362,8 @@ static YarpDistortion rsDistToYarpDist(const rs2_distortion dist)
     switch (dist) {
     case RS2_DISTORTION_BROWN_CONRADY:
         return YarpDistortion::YARP_PLUM_BOB;
+    case RS2_DISTORTION_INVERSE_BROWN_CONRADY:
+        return YarpDistortion::YARP_PLUM_BOB;
     default:
         return YarpDistortion::YARP_UNSUPPORTED;
     }
