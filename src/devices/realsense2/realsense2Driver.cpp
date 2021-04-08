@@ -364,7 +364,11 @@ static YarpDistortion rsDistToYarpDist(const rs2_distortion dist, const rs2_intr
     case RS2_DISTORTION_BROWN_CONRADY:
         return YarpDistortion::YARP_PLUM_BOB;
     default:
-        if (values.coeffs[0] == 0 && values.coeffs[1] == 0 && values.coeffs[2] == 0 && values.coeffs[3] == 0 && values.coeffs[4] == 0)
+        /*
+         * If the coefficient are all zero the image is undistorted. For now is set to plumb bob since all the devices that uses it are configured with plumb bob.
+         * An issue will be open to fix this bug and set it to undistorted.
+         */
+        if (values.coeffs[0] == 0.0 && values.coeffs[1] == 0.0 && values.coeffs[2] == 0.0 && values.coeffs[3] == 0.0 && values.coeffs[4] == 0.0)
         {
             return YarpDistortion::YARP_PLUM_BOB;
         }
