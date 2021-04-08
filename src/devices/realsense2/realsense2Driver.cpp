@@ -373,7 +373,6 @@ static YarpDistortion rsDistToYarpDist(const rs2_distortion dist, const rs2_intr
             return YarpDistortion::YARP_UNSUPPORTED;
         }
     }
-
 }
 
 static void settingErrorMsg(const string& error, bool& ret)
