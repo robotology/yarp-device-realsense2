@@ -357,15 +357,26 @@ static size_t bytesPerPixel(const rs2_format format)
     return bytes_per_pixel;
 }
 
-static YarpDistortion rsDistToYarpDist(const rs2_distortion dist)
+static YarpDistortion rsDistToYarpDist(const rs2_distortion dist, const rs2_intrinsics &values)
 {
-    switch (dist) {
+    switch (dist)
+    {
     case RS2_DISTORTION_BROWN_CONRADY:
         return YarpDistortion::YARP_PLUM_BOB;
     default:
-        return YarpDistortion::YARP_UNSUPPORTED;
+        /*
+         * If the coefficient are all zero the image is undistorted. For now is set to plumb bob since all the devices that uses it are configured with plumb bob.
+         * An issue will be open to fix this bug and set it to undistorted.
+         */
+        if (values.coeffs[0] == 0.0 && values.coeffs[1] == 0.0 && values.coeffs[2] == 0.0 && values.coeffs[3] == 0.0 && values.coeffs[4] == 0.0)
+        {
+            return YarpDistortion::YARP_PLUM_BOB;
+        }
+        else
+        {
+            return YarpDistortion::YARP_UNSUPPORTED;
+        }
     }
-
 }
 
 static void settingErrorMsg(const string& error, bool& ret)
@@ -382,7 +393,7 @@ static bool setIntrinsic(Property& intrinsic, const rs2_intrinsics &values)
     params.principalPointX    = values.ppx;
     params.principalPointY    = values.ppy;
     // distortion model
-    params.distortionModel.type = rsDistToYarpDist(values.model);
+    params.distortionModel.type = rsDistToYarpDist(values.model, values);
     params.distortionModel.k1 = values.coeffs[0];
     params.distortionModel.k2 = values.coeffs[1];
     params.distortionModel.t1 = values.coeffs[2];
