@@ -43,6 +43,8 @@ ENABLE_yarpcar_mjpeg
 ENABLE_yarpcar_depthimage2
 ```
 
+:bulb: **NOTE:** If you use YARP >= 3.5, the option `ENABLE_yarpcar_depthimage2` has been renamed to `ENABLE_yarppm_depthimage_to_rgb`.
+
 ### Build and install yarp-device-realsense2
 
 ```bash
@@ -102,6 +104,9 @@ You can write a yarp application to launch the camera and see the RGB and Depth 
 ```xml
 <protocol>unix_stream+recv.portmonitor+type.dll+file.depthimage2</protocol>
 ```
+
+:bulb: **NOTE:** When using YARP >= 3.5, the final part of the `protocol` string should be changed from `+file.depthimage2` to `+file.depthimage_to_rgb`.
+
 
 #### From the command line
 
