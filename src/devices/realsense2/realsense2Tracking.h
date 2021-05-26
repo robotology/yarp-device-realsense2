@@ -13,7 +13,6 @@
 
 #include <yarp/dev/DeviceDriver.h>
 #include <yarp/dev/MultipleAnalogSensorsInterfaces.h>
-#include <yarp/dev/IGenericSensor.h>
 #include <yarp/dev/IAnalogSensor.h>
 
 #include "realsense2Driver.h"
@@ -34,7 +33,6 @@ class realsense2Tracking :
         public yarp::dev::IThreeAxisLinearAccelerometers,
         public yarp::dev::IOrientationSensors,
         public yarp::dev::IPositionSensors,
-        //public yarp::dev::IGenericSensor,
         public yarp::dev::IAnalogSensor
 {
 private:
@@ -87,11 +85,6 @@ public:
     bool getPositionSensorFrameName(size_t sens_index, std::string& frameName) const override;
     bool getPositionSensorMeasure(size_t sens_index, yarp::sig::Vector& xyz, double& timestamp) const override;
 
-    /* IGenericSensor methods */
-    //bool read(yarp::sig::Vector &out) override;
-    //bool getChannels(int *nc) override;
-    //bool calibrate(int ch, double v) override;
-
     /* IAnalogSensor methods */
     int read(yarp::sig::Vector &out) override;
     int getState(int ch) override;
@@ -137,7 +130,6 @@ protected:
     enum timestamp_enumtype {yarp_timestamp=0, rs_timestamp};
     timestamp_enumtype m_timestamp_type;
 
-    yarp::sig::Vector m_pose_data;
     /*
     rs2::context m_ctx;
 
