@@ -163,6 +163,19 @@ The type on information currently made available are:
 - the Accelerometer measures, and
 - the Pose (position and orientation).
 
+You can also publish RealSense T256 pose using the `analogServer` device. Run it using:
+
+```bash
+yarpdev --device analogServer --name /t265 --period 10 --subdevice realsense2Tracking
+```
+
+:bulb: **NOTE:** also here, the user should specify the parameters `--name` and `--period` as needed.
+
+The command will open a port `/t256` that streams the pose as follows:
+
+```
+<positionX positionY positionZ QuaternionW QuaternionX QuaternionY QuaternionZ>
+```
 
 ## Device documentation
 
