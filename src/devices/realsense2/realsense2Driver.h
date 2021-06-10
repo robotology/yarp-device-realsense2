@@ -21,6 +21,7 @@
 #include <yarp/sig/Matrix.h>
 #include <yarp/os/Stamp.h>
 #include <yarp/dev/IRGBDSensor.h>
+#include <yarp/dev/FrameGrabberInterfaces.h >
 #include <yarp/dev/RGBDSensorParamParser.h>
 #include <librealsense2/rs.hpp>
 

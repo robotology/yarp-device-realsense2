@@ -14,6 +14,7 @@
 #include <yarp/dev/DeviceDriver.h>
 #include <yarp/dev/MultipleAnalogSensorsInterfaces.h>
 #include <yarp/dev/IAnalogSensor.h>
+#include <yarp/os/PeriodicThread.h>
 
 #include "realsense2Driver.h"
 #include <cstring>
@@ -24,7 +25,7 @@
 
  /**********************************************************************************************************/
  // This software module is experimental.
- // It is provided with uncomplete documentation and it may be modified/renamed/removed without any notice.
+ // It is provided with incomplete documentation and it may be modified/renamed/removed without any notice.
  /**********************************************************************************************************/
 
 class realsense2Tracking :
@@ -33,7 +34,9 @@ class realsense2Tracking :
         public yarp::dev::IThreeAxisLinearAccelerometers,
         public yarp::dev::IOrientationSensors,
         public yarp::dev::IPositionSensors,
-        public yarp::dev::IAnalogSensor
+        public yarp::dev::IAnalogSensor,
+        public yarp::dev::IFrameGrabberImageRaw,
+        public yarp::os::PeriodicThread
 {
 private:
     typedef yarp::os::Stamp Stamp;
@@ -46,6 +49,11 @@ public:
     // DeviceDriver
     bool open(yarp::os::Searchable& config) override;
     bool close() override;
+
+    //Periodic Thread
+    bool threadInit() override;
+    void run() override;
+    void threadRelease() override;
 
 private:
     //method
@@ -94,6 +102,11 @@ public:
     int calibrateChannel(int ch) override;
     int calibrateChannel(int ch, double value) override;
 
+    /* IFrameGrabberImageRaw */
+    bool getImage(yarp::sig::ImageOf<yarp::sig::PixelMono>& image) override;
+    int height() const override;
+    int width() const override;
+
 #if 0
     /* IPoseSensors methods */
     size_t getNrOfPoseSensors() const ;
@@ -108,6 +121,10 @@ protected:
     mutable rs2_vector m_last_gyro;
     mutable rs2_vector m_last_accel;
     mutable rs2_pose   m_last_pose;
+    mutable const void* m_fisheye_data = nullptr;
+    mutable int        m_fisheye_size;
+    const size_t       m_fisheye_width  = 848;
+    const size_t       m_fisheye_height = 800;
 
     //strings
     std::string       m_inertial_sensor_name_prefix;
@@ -129,6 +146,11 @@ protected:
     mutable std::string m_lastError;
     enum timestamp_enumtype {yarp_timestamp=0, rs_timestamp};
     timestamp_enumtype m_timestamp_type;
+
+    double m_yarp_timestamp;
+    double m_rs_timestamp;
+    double m_timestamp;
+
 
     /*
     rs2::context m_ctx;
