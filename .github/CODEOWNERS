@@ -1,3 +1,5 @@
 *                                             @Nicogene
 CMakeLists.txt                                @drdanz
 *.cmake                                       @drdanz
+src/devices/realsense2/realsense2Tracking.*        @randaz81
+src/devices/realsense2/realsense2withIMUDriver.*   @randaz81
