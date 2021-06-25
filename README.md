@@ -50,10 +50,14 @@ ENABLE_yarpcar_depthimage2
 ```bash
 mkdir build
 cd build
-cmake ..
+cmake -DCMAKE_INSTALL_PREFIX=<installation_path> ..
 make
 make install
 ```
+
+In order to make the device detectable, add `<installation_path>/share/yarp` to the `YARP_DATA_DIRS` environment variable of the system.
+
+Alternatively, if `YARP` has been installed using the [robotology-superbuild](https://github.com/robotology/robotology-superbuild), it is possible to use `<directory-where-you-downloaded-robotology-superbuild>/build/install` as the `<installation_path>`.
 
 ### How to use a RealSense D435
 
