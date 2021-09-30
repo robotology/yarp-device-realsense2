@@ -40,10 +40,10 @@ Before proceeding further, please enable the following CMake flags in YARP:
 ENABLE_yarpmod_RGBDSensorWrapper
 ENABLE_yarpmod_RGBDSensorClient
 ENABLE_yarpcar_mjpeg
-ENABLE_yarpcar_depthimage2
+ENABLE_yarppm_depthimage_to_rgb
 ```
 
-:bulb: **NOTE:** If you use YARP >= 3.5, the option `ENABLE_yarpcar_depthimage2` has been renamed to `ENABLE_yarppm_depthimage_to_rgb`.
+:bulb: **NOTE:** If you use YARP < 3.5, instead of the option `ENABLE_yarppm_depthimage_to_rgb` you should enable the option `ENABLE_yarpcar_depthimage2`.
 
 ### Build and install yarp-device-realsense2
 
@@ -97,7 +97,7 @@ You can write a yarp application to launch the camera and see the RGB and Depth 
     <connection>
       <from>/depthCamera/depthImage:o</from>
       <to>/view/depth:i</to>
-      <protocol>udp+recv.portmonitor+type.dll+file.depthimage2</protocol>
+      <protocol>udp+recv.portmonitor+type.dll+file.depthimage_to_rgb</protocol>
     </connection>
 
 </application>
@@ -106,10 +106,10 @@ You can write a yarp application to launch the camera and see the RGB and Depth 
 :bulb: **NOTE:** When using the camera *locally* and, not over a network, the user can substitute the protocol used for visualizing the depth image as follows:
 
 ```xml
-<protocol>unix_stream+recv.portmonitor+type.dll+file.depthimage2</protocol>
+<protocol>unix_stream+recv.portmonitor+type.dll+file.depthimage_to_rgb</protocol>
 ```
 
-:bulb: **NOTE:** When using YARP >= 3.5, the final part of the `protocol` string should be changed from `+file.depthimage2` to `+file.depthimage_to_rgb`.
+:bulb: **NOTE:** When using YARP < 3.5, the final part of the `protocol` string should be changed from `+file.depthimage_to_rgb` to `+file.depthimage2`.
 
 
 #### From the command line
