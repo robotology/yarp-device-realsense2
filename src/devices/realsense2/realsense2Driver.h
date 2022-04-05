@@ -36,6 +36,8 @@ private:
     typedef yarp::os::Stamp                           Stamp;
     typedef yarp::os::Property                        Property;
     typedef yarp::sig::FlexImage                      FlexImage;
+    bool        m_rotateImage180{false};
+
 
 public:
     realsense2Driver();
