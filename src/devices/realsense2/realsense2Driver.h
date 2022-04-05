@@ -36,7 +36,6 @@ private:
     typedef yarp::os::Stamp                           Stamp;
     typedef yarp::os::Property                        Property;
     typedef yarp::sig::FlexImage                      FlexImage;
-    bool        m_rotateImage180{false};
 
 
 public:
@@ -143,6 +142,7 @@ protected:
     bool m_needAlignment;
     int m_fps;
     float m_scale;
+    bool m_rotateImage180{false};
     std::vector<cameraFeature_id_t> m_supportedFeatures;
 };
 #endif

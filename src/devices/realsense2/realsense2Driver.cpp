@@ -773,10 +773,11 @@ bool realsense2Driver::open(Searchable& config)
         params.push_back(&(p.second));
     }
 
-    if(!config.check("rotateImage180")){
-        yCWarning(REALSENSE2) << "missing parameter rotateImage180, using default value of" << m_rotateImage180;
-    } else {
+    if(config.check("rotateImage180")){
         m_rotateImage180 = config.find("rotateImage180").asBool();
+        if (m_rotateImage180) {
+            yCWarning(REALSENSE2) << "parameter rotateImage180 enabled, the image is rotated";
+        }
     }
     m_verbose = config.check("verbose");
     if (config.check("stereoMode")) {
