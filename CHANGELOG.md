@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Changed default image distortion from `YARP_PLUM_BOB` to `YARP_DISTORTION_NONE`
+- Changed default yarp version to 3.5
+
 ## [0.2.0] - 2021-05-28
 
 ### Added
