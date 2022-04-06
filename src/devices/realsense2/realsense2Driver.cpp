@@ -772,6 +772,15 @@ bool realsense2Driver::open(Searchable& config)
     {
         params.push_back(&(p.second));
     }
+    //Manage depth quantization parameter
+    if(config.check("QUANT_PARAM")) {
+        yarp::os::Property quantCfg;
+        quantCfg.fromString(config.findGroup("QUANT_PARAM").toString());
+        m_depthQuantizationEnabled = true;
+        if (quantCfg.check("depth_quant")) {
+            m_depthDecimalNum = quantCfg.find("depth_quant").asInt32();
+        }
+    }
 
     if(config.check("rotateImage180")){
         m_rotateImage180 = config.find("rotateImage180").asBool();
@@ -1082,7 +1091,7 @@ bool realsense2Driver::getImage(FlexImage& Frame, Stamp *timeStamp, rs2::framese
         for (int i = 0; i < (color_frm.get_width() * color_frm.get_height()); i++) {
             for (size_t pixelIndex = 0; pixelIndex < bytesPerPixel(format); pixelIndex++) {
                 ((char *)Frame.getRawImage())[i * bytesPerPixel(format) + pixelIndex] = ((char *)color_frm.get_data())[
-                        ( Frame.getRawImageSize() - ((i+1) * bytesPerPixel(format) ) + pixelIndex];
+                        ( Frame.getRawImageSize()  -(( i-1) * bytesPerPixel(format))) + pixelIndex];
             }
         }
     } else {
@@ -1116,13 +1125,21 @@ bool realsense2Driver::getImage(depthImage& Frame, Stamp *timeStamp, const rs2::
 
     float* rawImage = &Frame.pixel(0,0);
     const auto * rawImageRs =(const uint16_t *) depth_frm.get_data();
+    double nearPlane;
+    double farPlane;
+    int intTemp;
+    getDepthClipPlanes(nearPlane, farPlane);
+    float powCoeff = pow(10.0f, (float) m_depthDecimalNum);
     for(int i = 0; i < w * h; i++)
     {
-
         if (m_rotateImage180) {
-            rawImage[i] = m_scale * rawImageRs[(w * h - 1) - i];
+            rawImage[i] = m_scale * rawImageRs[(w * h) - i -1];
         }else {
             rawImage[i] = m_scale * rawImageRs[i];
+        }
+        if (m_depthQuantizationEnabled) {
+            intTemp = (int) (rawImage[i] * powCoeff);
+            rawImage[i] = ((float) intTemp) / powCoeff;
         }
     }
 
