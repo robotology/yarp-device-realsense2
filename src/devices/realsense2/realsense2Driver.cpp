@@ -362,7 +362,7 @@ static YarpDistortion rsDistToYarpDist(const rs2_distortion dist, const rs2_intr
     switch (dist)
     {
     case RS2_DISTORTION_BROWN_CONRADY:
-        return YarpDistortion::YARP_DISTORTION_NONE;
+        return YarpDistortion::YARP_PLUMB_BOB;
     default:
         /*
          * If the coefficient are all zero the image is undistorted. For now is set to plumb bob since all the devices that uses it are configured with plumb bob.
