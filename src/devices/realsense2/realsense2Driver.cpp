@@ -776,7 +776,7 @@ bool realsense2Driver::open(Searchable& config)
     if(config.check("rotateImage180")){
         m_rotateImage180 = config.find("rotateImage180").asBool();
         if (m_rotateImage180) {
-            yCWarning(REALSENSE2) << "parameter rotateImage180 enabled, the image is rotated";
+            yCInfo(REALSENSE2) << "parameter rotateImage180 enabled, the image is rotated";
         }
     }
     m_verbose = config.check("verbose");
