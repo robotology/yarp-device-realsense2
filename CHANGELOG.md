@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- Added `rotateImage180` parameter to rotate the image when the camera is mounted upside down.
+- Added `rotateImage180` parameter to rotate the image when the camera is mounted upside down (https://github.com/robotology/yarp-device-realsense2/pull/27).
 
 ## [0.2.0] - 2021-05-28
 
