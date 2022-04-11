@@ -6,8 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- Changed default image distortion from `YARP_PLUM_BOB` to `YARP_DISTORTION_NONE`
-- Changed default yarp version to 3.5
+### Changed
+- If all the distortion parameters are zero, explicitly specify that the image has `YARP_DISTORTION_NONE` distortion (https://github.com/robotology/yarp-device-realsense2/pull/26).
+- Changed minimum required YARP version to 3.5 (https://github.com/robotology/yarp-device-realsense2/pull/26).
 
 ## [0.2.0] - 2021-05-28
 
