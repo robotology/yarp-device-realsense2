@@ -1079,10 +1079,10 @@ bool realsense2Driver::getImage(FlexImage& Frame, Stamp *timeStamp, rs2::framese
         return false;
     }
     if (m_rotateImage180) {
-        for (size_t i = 0; i < (color_frm.get_width() * color_frm.get_height()); i++) {
+        for (int i = 0; i < (color_frm.get_width() * color_frm.get_height()); i++) {
             for (size_t pixelIndex = 0; pixelIndex < bytesPerPixel(format); pixelIndex++) {
                 ((char *)Frame.getRawImage())[i * bytesPerPixel(format) + pixelIndex] = ((char *)color_frm.get_data())[
-                        ( Frame.getRawImageSize() - i * bytesPerPixel(format)) + pixelIndex];
+                        ( Frame.getRawImageSize() - ((i+1) * bytesPerPixel(format) ) + pixelIndex];
             }
         }
     } else {
@@ -1120,7 +1120,7 @@ bool realsense2Driver::getImage(depthImage& Frame, Stamp *timeStamp, const rs2::
     {
 
         if (m_rotateImage180) {
-            rawImage[i] = m_scale * rawImageRs[(w * h) - i];
+            rawImage[i] = m_scale * rawImageRs[(w * h - 1) - i];
         }else {
             rawImage[i] = m_scale * rawImageRs[i];
         }
