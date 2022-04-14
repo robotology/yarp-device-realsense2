@@ -773,6 +773,12 @@ bool realsense2Driver::open(Searchable& config)
         params.push_back(&(p.second));
     }
 
+    if(config.check("rotateImage180")){
+        m_rotateImage180 = config.find("rotateImage180").asBool();
+        if (m_rotateImage180) {
+            yCInfo(REALSENSE2) << "parameter rotateImage180 enabled, the image is rotated";
+        }
+    }
     m_verbose = config.check("verbose");
     if (config.check("stereoMode")) {
         m_stereoMode = config.find("stereoMode").asBool();
@@ -1072,8 +1078,16 @@ bool realsense2Driver::getImage(FlexImage& Frame, Stamp *timeStamp, rs2::framese
         yCError(REALSENSE2) << "Device and local copy data size doesn't match";
         return false;
     }
-
-    memcpy((void*)Frame.getRawImage(), (void*)color_frm.get_data(), mem_to_wrt);
+    if (m_rotateImage180) {
+        for (int i = 0; i < (color_frm.get_width() * color_frm.get_height()); i++) {
+            for (size_t pixelIndex = 0; pixelIndex < bytesPerPixel(format); pixelIndex++) {
+                ((char *)Frame.getRawImage())[i * bytesPerPixel(format) + pixelIndex] = ((char *)color_frm.get_data())[
+                        ( Frame.getRawImageSize() - ((i+1) * bytesPerPixel(format) ) + pixelIndex];
+            }
+        }
+    } else {
+        memcpy((void*)Frame.getRawImage(), (void*)color_frm.get_data(), mem_to_wrt);
+    }
     m_rgb_stamp.update();
     if (timeStamp != nullptr)
     {
@@ -1102,10 +1116,14 @@ bool realsense2Driver::getImage(depthImage& Frame, Stamp *timeStamp, const rs2::
 
     float* rawImage = &Frame.pixel(0,0);
     const auto * rawImageRs =(const uint16_t *) depth_frm.get_data();
-
     for(int i = 0; i < w * h; i++)
     {
-        rawImage[i] = m_scale * rawImageRs[i];
+
+        if (m_rotateImage180) {
+            rawImage[i] = m_scale * rawImageRs[(w * h - 1) - i];
+        }else {
+            rawImage[i] = m_scale * rawImageRs[i];
+        }
     }
 
     m_depth_stamp.update();

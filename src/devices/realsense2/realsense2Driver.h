@@ -37,6 +37,7 @@ private:
     typedef yarp::os::Property                        Property;
     typedef yarp::sig::FlexImage                      FlexImage;
 
+
 public:
     realsense2Driver();
     ~realsense2Driver() override = default;
@@ -141,6 +142,7 @@ protected:
     bool m_needAlignment;
     int m_fps;
     float m_scale;
+    bool m_rotateImage180{false};
     std::vector<cameraFeature_id_t> m_supportedFeatures;
 };
 #endif
