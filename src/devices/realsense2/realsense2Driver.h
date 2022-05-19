@@ -15,7 +15,8 @@
 #include <mutex>
 
 #include <yarp/dev/DeviceDriver.h>
-#include <yarp/dev/FrameGrabberControl2.h>
+#include <yarp/dev/IFrameGrabberControls.h>
+#include <yarp/dev/IFrameGrabberImage.h>
 #include <yarp/os/PeriodicThread.h>
 #include <yarp/sig/all.h>
 #include <yarp/sig/Matrix.h>
