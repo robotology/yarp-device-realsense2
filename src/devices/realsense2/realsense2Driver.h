@@ -133,6 +133,10 @@ protected:
     rs2_stream  m_alignment_stream{RS2_STREAM_COLOR};
 
 
+    // Data quantization related parameters
+    bool                             m_depthQuantizationEnabled{false};
+    int                              m_depthDecimalNum{0};
+
     yarp::os::Stamp m_rgb_stamp;
     yarp::os::Stamp m_depth_stamp;
     mutable std::string m_lastError;
