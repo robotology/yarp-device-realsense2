@@ -1,6 +1,7 @@
 name: C++ CI Workflow with conda dependencies
 
 on:
+  workflow_dispatch:
   push:
   pull_request:
   schedule:
