@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - If all the distortion parameters are zero, explicitly specify that the image has `YARP_DISTORTION_NONE` distortion (https://github.com/robotology/yarp-device-realsense2/pull/26).
 - Changed minimum required YARP version to 3.5 (https://github.com/robotology/yarp-device-realsense2/pull/26).
 
+### Fixed
+- Fixed support for `D435i` (https://github.com/robotology/yarp-device-realsense2/pull/36). 
+
 ## [0.2.0] - 2021-05-28
 
 ### Added
