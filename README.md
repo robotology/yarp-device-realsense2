@@ -116,7 +116,7 @@ You can write a yarp application to launch the camera and see the RGB and Depth 
 
 Set the `YARP_ROBOT_NAME` to either `CER01`, `CER02` or `CER03`. Then, run the command:
 
-```bash
+```console
 yarpdev --from sensors/RealSense_conf.ini
 ```
 
@@ -145,7 +145,42 @@ clipPlanes (0.2 10.0)
 
 ### How to use a RealSense D435i
 
-:construction: UNDER CONSTRUCTION :construction:
+The device retrieving the  RealSense D435i data is the `multipleanalogsensorserver` and it must be run as follows:
+
+```console
+yarpdev --from sensors/RealSense_conf.ini
+```
+
+however differently from the Realsense D435 the  `sensors/RealSense_conf.ini` contains the following settings:
+
+```ini
+device       multipleanalogsensorsserver
+subdevice    realsense2withIMU
+name         /depthCamera
+period       10
+
+[SETTINGS]
+depthResolution (640 480)
+rgbResolution   (640 480)
+framerate       30
+enableEmitter   true
+alignmentFrame  RGB
+
+[HW_DESCRIPTION]
+clipPlanes (0.2 10.0)
+```
+
+As you can notice the device now is a `multipleanalogsensorsserver`.
+
+The data from a RealSense D435i will be streamed on the port named `/depthCamera/measures:o` following the format described in the `SensorStreamingData` class.
+
+The type of information currently made available are:
+
+- the Gyroscope measures,
+- the Accelerometer measures,
+- the orientation.
+
+:bulb: **NOTE:** The  Gyroscope and the Accelerometer data are directly retrieved from the RealSense. On the other hand, the RealSense D435i does not provide a routine to get its orientation. To give the user also this information, this device implements a [complementary filter](https://github.com/robotology/yarp-device-realsense2/blob/d4da73fa2336c40d7d479bb8ee87c317f2128c9b/src/devices/realsense2/realsense2withIMUDriver.cpp#L73-L111) that estimates the RealSense orientation from the accelerometer and gyroscope readouts. :warning: The image streaming is **not** used to estimate the orientation. 
 
 ### How to use a RealSense T256
 
@@ -153,7 +188,7 @@ clipPlanes (0.2 10.0)
 
 The device retrieving the  RealSense T256 data is the `multipleanalogsensorserver` and it must be run as follows:
 
-```bash
+```console
 yarpdev --device multipleanalogsensorsserver --name /t256 --period 10 --subdevice realsense2Tracking
 ```
 
