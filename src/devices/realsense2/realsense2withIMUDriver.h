@@ -40,7 +40,7 @@ private:
 
 public:
     realsense2withIMUDriver();
-    ~realsense2withIMUDriver() override = default;
+    ~realsense2withIMUDriver() override;
 
     // DeviceDriver
     bool open(yarp::os::Searchable& config) override;
@@ -85,7 +85,7 @@ protected:
     mutable rs2_vector m_last_gyro;
     mutable rs2_vector m_last_accel;
     mutable rs2_pose   m_last_pose;
-    mutable rotation_estimator* m_rotation_estimator;
+    std::unique_ptr<rotation_estimator> m_rotation_estimator;
 
     bool m_sensor_has_orientation_estimator;
 

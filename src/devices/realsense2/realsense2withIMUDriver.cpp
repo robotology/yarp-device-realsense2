@@ -230,8 +230,10 @@ static void settingErrorMsg(const string& error, bool& ret)
 realsense2withIMUDriver::realsense2withIMUDriver() :
         realsense2Driver()
 {
-    m_rotation_estimator=nullptr;
+    m_rotation_estimator=std::make_unique<rotation_estimator>();
 }
+
+realsense2withIMUDriver::~realsense2withIMUDriver() = default;
 
 #if 0
 bool realsense2withIMUDriver::pipelineStartup()
