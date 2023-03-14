@@ -26,7 +26,7 @@
 
  /**********************************************************************************************************/
  // This software module is experimental.
- // It is provided with uncomplete documentation and it may be modified/renamed/removed without any notice.
+ // It is provided with incomplete documentation and it may be modified/renamed/removed without any notice.
  /**********************************************************************************************************/
 
 using namespace yarp::dev;
@@ -147,8 +147,64 @@ static void settingErrorMsg(const string& error, bool& ret)
 }
 #endif
 
-realsense2Tracking::realsense2Tracking()
+realsense2Tracking::realsense2Tracking() : PeriodicThread (0.010)
 {
+}
+
+bool realsense2Tracking::threadInit()
+{
+    bool b = pipelineStartup();
+    if (b == false)
+    {
+        yCError(REALSENSE2TRACKING) << "Pipeline initialization failed";
+        return false;
+    }
+    return true;
+}
+
+void realsense2Tracking::threadRelease()
+{
+    pipelineShutdown();
+}
+
+void realsense2Tracking::run()
+{
+    m_yarp_timestamp = yarp::os::Time::now();
+
+    rs2::frameset dataframe;
+    try
+    {
+        dataframe = m_pipeline.wait_for_frames();
+    }
+    catch (const rs2::error & e)
+    {
+        yCError(REALSENSE2TRACKING) << "m_pipeline.wait_for_frames() failed with error:" << "(" << e.what() << ")";
+        m_lastError = e.what();
+        return;
+    }
+    auto fg = dataframe.first_or_default(RS2_STREAM_GYRO, RS2_FORMAT_MOTION_XYZ32F);
+    rs2::motion_frame gyro = fg.as<rs2::motion_frame>();
+
+    auto fa = dataframe.first_or_default(RS2_STREAM_ACCEL, RS2_FORMAT_MOTION_XYZ32F);
+    rs2::motion_frame accel = fa.as<rs2::motion_frame>();
+
+    auto fp = dataframe.first_or_default(RS2_STREAM_POSE);
+    rs2::pose_frame pose = fp.as<rs2::pose_frame>();
+
+    auto fr = dataframe.first_or_default(RS2_STREAM_FISHEYE);
+
+    std::lock_guard<std::mutex> guard(m_mutex);
+    m_last_gyro = gyro.get_motion_data();
+    m_last_accel = accel.get_motion_data();
+    m_last_pose = pose.get_pose_data();
+    m_fisheye_data = fr.get_data();
+    m_fisheye_size = fr.get_data_size();
+
+    if (m_timestamp_type == yarp_timestamp) { m_timestamp = m_yarp_timestamp; }
+    else if (m_timestamp_type == rs_timestamp) { m_timestamp = m_rs_timestamp = gyro.get_timestamp(); }
+    else m_timestamp = 0;
+
+    return;
 }
 
 bool realsense2Tracking::pipelineStartup()
@@ -189,7 +245,7 @@ bool realsense2Tracking::pipelineRestart()
 bool realsense2Tracking::open(Searchable& config)
 {
     yCWarning(REALSENSE2TRACKING) << "This software module is experimental.";
-    yCWarning(REALSENSE2TRACKING) << "It is provided with uncomplete documentation and it may be modified/renamed/removed without any notice.";
+    yCWarning(REALSENSE2TRACKING) << "It is provided with incomplete documentation and it may be modified/renamed/removed without any notice.";
 
     string sensor_is = "t265";
     m_timestamp_type = timestamp_enumtype::yarp_timestamp;
@@ -205,24 +261,20 @@ bool realsense2Tracking::open(Searchable& config)
         }
     }
 
-    bool b= true;
-
+    yCInfo(REALSENSE2TRACKING) << "Starting the pipeline";
     m_cfg.enable_stream(RS2_STREAM_ACCEL, RS2_FORMAT_MOTION_XYZ32F);
     m_cfg.enable_stream(RS2_STREAM_GYRO, RS2_FORMAT_MOTION_XYZ32F);
     m_cfg.enable_stream(RS2_STREAM_POSE, RS2_FORMAT_6DOF);
-    b &= pipelineStartup();
-    if (b==false)
-    {
-        yCError(REALSENSE2TRACKING) << "Pipeline initialization failed";
-        return false;
-    }
+    m_cfg.enable_stream(RS2_STREAM_FISHEYE, 1, RS2_FORMAT_Y8);
+    m_cfg.enable_stream(RS2_STREAM_FISHEYE, 2, RS2_FORMAT_Y8);
 
+    this->start();
     return true;
 }
 
 bool realsense2Tracking::close()
 {
-    pipelineShutdown();
+    askToStop();
     return true;
 }
 
@@ -260,23 +312,6 @@ bool realsense2Tracking::getThreeAxisGyroscopeMeasure(size_t sens_index, yarp::s
     }
 
     std::lock_guard<std::mutex> guard(m_mutex);
-    rs2::frameset dataframe;
-    try
-    {
-        dataframe = m_pipeline.wait_for_frames();
-    }
-    catch (const rs2::error& e)
-    {
-        yCError(REALSENSE2TRACKING) << "m_pipeline.wait_for_frames() failed with error:"<< "(" << e.what() << ")";
-        m_lastError = e.what();
-        return false;
-    }
-    auto fg = dataframe.first_or_default(RS2_STREAM_GYRO, RS2_FORMAT_MOTION_XYZ32F);
-    rs2::motion_frame gyro = fg.as<rs2::motion_frame>();
-    if (m_timestamp_type == yarp_timestamp) { timestamp = yarp::os::Time::now(); }
-    else if (m_timestamp_type == rs_timestamp) { timestamp = gyro.get_timestamp(); }
-    else timestamp=0;
-    m_last_gyro = gyro.get_motion_data();
     out.resize(3);
     out[0] = m_last_gyro.x;
     out[1] = m_last_gyro.y;
@@ -317,23 +352,6 @@ bool realsense2Tracking::getThreeAxisLinearAccelerometerMeasure(size_t sens_inde
     if (sens_index != 0) { return false; }
 
     std::lock_guard<std::mutex> guard(m_mutex);
-    rs2::frameset dataframe;
-    try
-    {
-        dataframe = m_pipeline.wait_for_frames();
-    }
-    catch (const rs2::error& e)
-    {
-        yCError(REALSENSE2TRACKING) << "m_pipeline.wait_for_frames() failed with error:"<< "(" << e.what() << ")";
-        m_lastError = e.what();
-        return false;
-    }
-    auto fa = dataframe.first_or_default(RS2_STREAM_ACCEL, RS2_FORMAT_MOTION_XYZ32F);
-    rs2::motion_frame accel = fa.as<rs2::motion_frame>();
-    m_last_accel = accel.get_motion_data();
-    if (m_timestamp_type == yarp_timestamp) { timestamp = yarp::os::Time::now(); }
-    else if (m_timestamp_type == rs_timestamp) { timestamp = accel.get_timestamp(); }
-    else timestamp = 0;
     out.resize(3);
     out[0] = m_last_accel.x;
     out[1] = m_last_accel.y;
@@ -375,23 +393,6 @@ bool realsense2Tracking::getOrientationSensorMeasureAsRollPitchYaw(size_t sens_i
     if (sens_index != 0) { return false; }
 
     std::lock_guard<std::mutex> guard(m_mutex);
-    rs2::frameset dataframe;
-    try
-    {
-        dataframe = m_pipeline.wait_for_frames();
-    }
-    catch (const rs2::error& e)
-    {
-        yCError(REALSENSE2TRACKING) << "m_pipeline.wait_for_frames() failed with error:"<< "(" << e.what() << ")";
-        m_lastError = e.what();
-        return false;
-    }
-    auto fa = dataframe.first_or_default(RS2_STREAM_POSE);
-    rs2::pose_frame pose = fa.as<rs2::pose_frame>();
-    m_last_pose = pose.get_pose_data();
-    if (m_timestamp_type == yarp_timestamp) { timestamp = yarp::os::Time::now(); }
-    else if (m_timestamp_type == rs_timestamp) { timestamp = pose.get_timestamp(); }
-    else timestamp = 0;
     yarp::math::Quaternion q(m_last_pose.rotation.x, m_last_pose.rotation.y, m_last_pose.rotation.z, m_last_pose.rotation.w);
     yarp::sig::Matrix mat = q.toRotationMatrix3x3();
     yarp::sig::Vector rpy_temp = yarp::math::dcm2rpy(mat);
@@ -400,6 +401,34 @@ bool realsense2Tracking::getOrientationSensorMeasureAsRollPitchYaw(size_t sens_i
     rpy[1] = 0 + rpy_temp[1] * 180 / M_PI;
     rpy[2] = 0 + rpy_temp[2] * 180 / M_PI;
     return true;
+}
+
+//-------------------------------------------------------------------------------------------------------
+
+bool realsense2Tracking::getImage(yarp::sig::ImageOf<yarp::sig::PixelMono>& image)
+{
+    image.resize(848,800);
+    std::lock_guard<std::mutex> guard(m_mutex);
+    if (m_fisheye_data==nullptr) return false;
+    unsigned char* pi = (unsigned char*)m_fisheye_data;
+    unsigned char* po = image.getRawImage();
+    for (size_t i=0; i< m_fisheye_width * m_fisheye_height; i++)
+    {
+        *po=*pi;
+        po++;
+        pi++;
+    }
+    return true;
+}
+
+int realsense2Tracking::height() const
+{
+    return m_fisheye_height;
+}
+
+int realsense2Tracking::width() const
+{
+    return m_fisheye_width;
 }
 
 //-------------------------------------------------------------------------------------------------------
@@ -436,23 +465,6 @@ bool realsense2Tracking::getPositionSensorMeasure(size_t sens_index, yarp::sig::
     if (sens_index != 0) { return false; }
 
     std::lock_guard<std::mutex> guard(m_mutex);
-    rs2::frameset dataframe;
-    try
-    {
-        dataframe = m_pipeline.wait_for_frames();
-    }
-    catch (const rs2::error& e)
-    {
-        yCError(REALSENSE2TRACKING) << "m_pipeline.wait_for_frames() failed with error:"<< "(" << e.what() << ")";
-        m_lastError = e.what();
-        return false;
-    }
-    auto fa = dataframe.first_or_default(RS2_STREAM_POSE);
-    rs2::pose_frame pose = fa.as<rs2::pose_frame>();
-    m_last_pose = pose.get_pose_data();
-    if (m_timestamp_type == yarp_timestamp) { timestamp = yarp::os::Time::now(); }
-    else if (m_timestamp_type == rs_timestamp) { timestamp = pose.get_timestamp(); }
-    else timestamp = 0;
     xyz.resize(3);
     xyz[0] = m_last_pose.translation.x;
     xyz[1] = m_last_pose.translation.y;
@@ -460,16 +472,15 @@ bool realsense2Tracking::getPositionSensorMeasure(size_t sens_index, yarp::sig::
     return true;
 }
 
+//-------------------------------------------------------------------------------------------------------
+// IAnalogSensor methods. Beware! this is just a temporary test.
+// This methods will be removed soon: realsesne2Tracking should NOT derive from IAnalogSensor!
+
 int realsense2Tracking::read(yarp::sig::Vector& out)
 {
     // Publishes the data in the analog port as:
     // <positionX positionY positionZ QuaternionW QuaternionX QuaternionY QuaternionZ>
     std::lock_guard<std::mutex> guard(m_mutex);
-    rs2::frameset dataframe = m_pipeline.wait_for_frames();
-    auto fa = dataframe.first_or_default(RS2_STREAM_POSE);
-    rs2::pose_frame pose = fa.as<rs2::pose_frame>();
-    m_last_pose = pose.get_pose_data();
-
     out.resize(7);
     out[0] = m_last_pose.translation.x;
     out[1] = m_last_pose.translation.y;
@@ -511,9 +522,6 @@ int realsense2Tracking::calibrateChannel(int ch, double value)
 {
     return 0;
 }
-
-
-
 
 //-------------------------------------------------------------------------------------------------------
 #if 0
