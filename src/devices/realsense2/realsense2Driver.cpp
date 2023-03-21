@@ -884,10 +884,7 @@ bool realsense2Driver::getRgbResolution(int &width, int &height)
 bool realsense2Driver::setDepthResolution(int width, int height)
 {
     if (m_depth_sensor && isSupportedFormat(*m_depth_sensor, width, height, m_fps, m_verbose))
-    {
-        m_cfg.enable_stream(RS2_STREAM_COLOR, m_color_intrin.width, m_color_intrin.height, RS2_FORMAT_RGB8, m_fps);
         m_cfg.enable_stream(RS2_STREAM_DEPTH, width, height, RS2_FORMAT_Z16, m_fps);
-    }
     else
     {
         if (m_initialized)
