@@ -906,7 +906,6 @@ bool realsense2Driver::setRgbResolution(int width, int height)
     bool fail = true;
     if (m_color_sensor && isSupportedFormat(*m_color_sensor, width, height, m_fps, m_verbose)) {
         m_cfg.enable_stream(RS2_STREAM_COLOR, width, height, RS2_FORMAT_RGB8, m_fps);
-        m_cfg.enable_stream(RS2_STREAM_DEPTH, m_depth_intrin.width, m_depth_intrin.height, RS2_FORMAT_Z16, m_fps);
         fail = false;
         if (m_stereoMode)
         {
