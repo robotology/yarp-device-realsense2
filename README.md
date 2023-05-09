@@ -143,6 +143,32 @@ clipPlanes (0.2 10.0)
 
 :warning: **WARNING:** the user might have to change the parameters `depthResolution` and `rgbResolution`. These parameters change depending on the firmware version installed on the used camera.
 
+### How to use a RealSense D405
+
+To use this model of camera you can follow the same instructions above with the following **notable** differences:
+
+- this camera does not have an active emitter system, hence it should be disabled as not supported;
+- this camera does not have separate RGB and depth sensors - it only has a depth sensor that also provides RGB images - hence only the depth resolution should be set;
+- this camera does not need active software-based alignment per construction - see [here](https://github.com/IntelRealSense/librealsense/issues/11784#issuecomment-1539851902) - hence the alignment should be disabled;
+- this camera is a short-range camera, hence it is suggested to provide an adequately low lower bound for the clipping planes.
+
+Considering the above, a possible configuration file might be the following:
+
+```ini
+device       RGBDSensorWrapper
+subdevice    realsense2
+name         /depthCamera
+
+[SETTINGS]
+depthResolution (640 480) # <-- Same resolution as the rgbResolution
+framerate       30
+alignmentFrame  None      # <-- alignment set to None
+                          # <-- 'enableEmitter' removed as not supported
+
+[HW_DESCRIPTION]
+clipPlanes (0.01 10.0)    # <-- lower bound for clipping planes set to 0.01 meters
+```
+
 ### How to use a RealSense D435i
 
 :construction: UNDER CONSTRUCTION :construction:
