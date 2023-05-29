@@ -529,15 +529,56 @@ void realsense2Driver::fallback()
 
 bool realsense2Driver::initializeRealsenseDevice()
 {
-    if (!params_map[rgbRes].isSetting || !params_map[depthRes].isSetting)
+    // Check if there are connected cameras
+    if (m_ctx.query_devices().size() == 0)
     {
-        yCError(REALSENSE2)<<"Missing depthResolution or rgbResolution from [SETTINGS]";
+        yCError(REALSENSE2) << "No device connected, please connect a RealSense device";
         return false;
     }
-    double colorW = params_map[rgbRes].val[0].asFloat64();
-    double colorH = params_map[rgbRes].val[1].asFloat64();
-    double depthW = params_map[depthRes].val[0].asFloat64();
-    double depthH = params_map[depthRes].val[1].asFloat64();
+
+    //Using the device_hub we can block the program until a device connects
+    rs2::device_hub device_hub(m_ctx);
+    m_device = device_hub.wait_for_device();
+
+    // Get the camera name as the D405 is to be handled differently from the other cameras
+    const std::string camera_name = std::string(m_device.get_info(RS2_CAMERA_INFO_NAME));
+    const bool is_d405 = (camera_name.find("D405") != std::string::npos);
+
+    // Extract RGB and depth resolution
+    double colorW;
+    double colorH;
+    double depthW;
+    double depthH;
+    if (is_d405)
+    {
+        if (!params_map[depthRes].isSetting)
+        {
+            yCError(REALSENSE2)<<"Missing depthResolution from [SETTINGS]";
+            return false;
+        }
+
+        // A D405 camera inherits the RGB resolution from the that of the depth sensor
+        colorW = depthW = params_map[depthRes].val[0].asFloat64();
+        colorH = depthH = params_map[depthRes].val[1].asFloat64();
+    }
+    else
+    {
+        if (!params_map[rgbRes].isSetting)
+        {
+            yCError(REALSENSE2)<<"Missing rgbResolution from [SETTINGS]";
+            return false;
+        }
+        if (!params_map[depthRes].isSetting)
+        {
+            yCError(REALSENSE2)<<"Missing depthResolution from [SETTINGS]";
+            return false;
+        }
+
+        colorW = params_map[rgbRes].val[0].asFloat64();
+        colorH = params_map[rgbRes].val[1].asFloat64();
+        depthW = params_map[depthRes].val[0].asFloat64();
+        depthH = params_map[depthRes].val[1].asFloat64();
+    }
 
     m_cfg.enable_stream(RS2_STREAM_COLOR, colorW, colorH, RS2_FORMAT_RGB8, m_fps);
     m_cfg.enable_stream(RS2_STREAM_DEPTH, depthW, depthH, RS2_FORMAT_Z16, m_fps);
@@ -548,6 +589,12 @@ bool realsense2Driver::initializeRealsenseDevice()
     if (!pipelineStartup())
         return false;
     m_initialized = true;
+
+    //TODO: if more are connected?!
+    // Update the selected device
+    m_device = m_profile.get_device();
+    if (m_verbose)
+        yCInfo(REALSENSE2) << get_device_information(m_device).c_str();
 
     // Camera warmup - Dropped frames to allow stabilization
     yCInfo(REALSENSE2) << "Sensor warm-up...";
@@ -565,25 +612,6 @@ bool realsense2Driver::initializeRealsenseDevice()
     }
     yCInfo(REALSENSE2) << "Device ready!";
 
-    if (m_ctx.query_devices().size() == 0)
-    {
-        yCError(REALSENSE2) << "No device connected, please connect a RealSense device";
-
-        rs2::device_hub device_hub(m_ctx);
-
-        //Using the device_hub we can block the program until a device connects
-        m_device = device_hub.wait_for_device();
-    }
-    else
-    {
-        //TODO: if more are connected?!
-        // Update the selected device
-        m_device = m_profile.get_device();
-        if (m_verbose)
-            yCInfo(REALSENSE2) << get_device_information(m_device).c_str();
-    }
-
-
     // Given a device, we can query its sensors using:
     m_sensors = m_device.query_sensors();
 
@@ -596,19 +624,33 @@ bool realsense2Driver::initializeRealsenseDevice()
         }
     }
 
-    for (auto & m_sensor : m_sensors)
+    if (is_d405)
     {
-        if (m_sensor.is<rs2::depth_sensor>())
+        // A D405 camera only exposes rs2::depth_sensor depth sensor although it also streams RGB images
+        // Hence, we use the pointer to the depth sensor to access the RGB-related options
+        for (auto & m_sensor : m_sensors)
         {
-            m_depth_sensor =  &m_sensor;
-            if (!getOption(RS2_OPTION_DEPTH_UNITS, m_depth_sensor, m_scale))
-            {
-                yCError(REALSENSE2) << "Failed to retrieve scale";
-                return false;
-            }
+            if (m_sensor.is<rs2::depth_sensor>())
+                m_depth_sensor = &m_sensor;
         }
-        else if (m_sensor.get_stream_profiles()[0].stream_type() == RS2_STREAM_COLOR)
-            m_color_sensor = &m_sensor;
+        m_color_sensor = m_depth_sensor;
+    }
+    else
+    {
+        for (auto & m_sensor : m_sensors)
+        {
+            if (m_sensor.is<rs2::depth_sensor>())
+                m_depth_sensor =  &m_sensor;
+            else if (m_sensor.get_stream_profiles()[0].stream_type() == RS2_STREAM_COLOR)
+                m_color_sensor = &m_sensor;
+        }
+    }
+
+    // Retrieve depth scaling factor
+    if (!getOption(RS2_OPTION_DEPTH_UNITS, m_depth_sensor, m_scale))
+    {
+        yCError(REALSENSE2) << "Failed to retrieve scale";
+        return false;
     }
 
     // Get stream intrinsics & extrinsics
@@ -842,10 +884,7 @@ bool realsense2Driver::getRgbResolution(int &width, int &height)
 bool realsense2Driver::setDepthResolution(int width, int height)
 {
     if (m_depth_sensor && isSupportedFormat(*m_depth_sensor, width, height, m_fps, m_verbose))
-    {
-        m_cfg.enable_stream(RS2_STREAM_COLOR, m_color_intrin.width, m_color_intrin.height, RS2_FORMAT_RGB8, m_fps);
         m_cfg.enable_stream(RS2_STREAM_DEPTH, width, height, RS2_FORMAT_Z16, m_fps);
-    }
     else
     {
         if (m_initialized)
@@ -867,7 +906,6 @@ bool realsense2Driver::setRgbResolution(int width, int height)
     bool fail = true;
     if (m_color_sensor && isSupportedFormat(*m_color_sensor, width, height, m_fps, m_verbose)) {
         m_cfg.enable_stream(RS2_STREAM_COLOR, width, height, RS2_FORMAT_RGB8, m_fps);
-        m_cfg.enable_stream(RS2_STREAM_DEPTH, m_depth_intrin.width, m_depth_intrin.height, RS2_FORMAT_Z16, m_fps);
         fail = false;
         if (m_stereoMode)
         {
