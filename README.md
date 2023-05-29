@@ -6,7 +6,11 @@ This is the realsense device for [YARP](https://www.yarp.it/).
 It supports the Intel® RealSense cameras.
 
 The **Intel® RealSense™** cameras currently compatible with YARP are:
+- [Depth Camera D405](https://www.intelrealsense.com/depth-camera-d405/)
+- [Depth Camera D415](https://www.intelrealsense.com/depth-camera-d415/)
 - [Depth Camera D435](https://www.intelrealsense.com/depth-camera-d435/)
+- [Depth Camera D455](https://www.intelrealsense.com/depth-camera-d455/)
+- [LiDAR Camera L515](https://www.intelrealsense.com/lidar-camera-l515/)
 - [Depth Camera with IMU D435i](https://www.intelrealsense.com/depth-camera-d435i/)
 - [Tracking Camera T256](https://www.intelrealsense.com/tracking-camera-t265/)
 
