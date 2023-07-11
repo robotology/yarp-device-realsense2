@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2023-07-11
+
+
 ### Added
 - Added `rotateImage180` parameter to rotate the image when the camera is mounted upside down (https://github.com/robotology/yarp-device-realsense2/pull/27).
 - Added `QUANT_PARAM` group parameter with `depth_quant` parameter (integer) to limit decimal places in depth image  (https://github.com/robotology/yarp-device-realsense2/pull/30).
