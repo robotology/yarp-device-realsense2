@@ -24,7 +24,7 @@
 #include <yarp/dev/IRGBDSensor.h>
 #include <yarp/dev/RGBDSensorParamParser.h>
 #include <librealsense2/rs.hpp>
-#include <rs_types.h>
+#include <librealsense2/rs_advanced_mode.hpp>
 
 
 class realsense2Driver :
@@ -160,5 +160,6 @@ protected:
     bool m_rotateImage180{false};
     std::vector<cameraFeature_id_t> m_supportedFeatures;
     bool m_usePreset{false};
+    rs2_rs400_visual_preset m_presetName;
 };
 #endif

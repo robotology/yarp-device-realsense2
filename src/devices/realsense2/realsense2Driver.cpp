@@ -8,6 +8,7 @@
 
 #include <cmath>
 #include <algorithm>
+#include <string>
 #include <iomanip>
 #include <cstdint>
 
@@ -589,7 +590,10 @@ bool realsense2Driver::initializeRealsenseDevice()
     if (!pipelineStartup())
         return false;
     
-    if(!setPreset())
+    if(!setPreset(m_presetName))
+    {
+        yCError(REALSENSE2) << "Unable to set preset: "<< m_presetName;
+    }
         
 
     m_initialized = true;
@@ -845,22 +849,15 @@ bool realsense2Driver::open(Searchable& config)
 
     if (m_usePreset)
     {
-        std::string presetName = config.check("presetName").asString();
-        std::transform(presetName.begin(), presetName.end(), presetName.begin(), std::toupper);
-        presetName = std::toupper()
+        std::string presetName = config.find("presetName").asString();
+        std::transform(presetName.begin(), presetName.end(), presetName.begin(), ::toupper);
         if (presetsMap.find(presetName) == presetsMap.end()) {
             yCError(REALSENSE2) <<  "Value " << presetName << " not allowed as camera preset, see documentation for supported values.";
         }
         else
         {
-            if(!setPreset(presetsMap.at(presetName)))
-            {
-                yCError(REALSENSE2) << "Unable to set preset: " << presetName;
-            }
-            else
-            {
-                yCInfo(REALSENSE2) << "Using Preset: " << presetName;
-            }   
+            m_presetName = presetsMap.at(presetName);
+            yCInfo(REALSENSE2) << "Found requested preset: " << m_presetName;
         }
     }
 
@@ -1719,7 +1716,7 @@ bool realsense2Driver::setPreset(rs2_rs400_visual_preset preset)
     }
     catch(const std::exception& e)
     {
-        yCError(REALSENSE2) << e.what();
+        yCError(REALSENSE2) << "Error while setting preset: " << e.what();
         return false;
     }
     return true;
