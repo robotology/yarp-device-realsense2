@@ -845,8 +845,11 @@ bool realsense2Driver::open(Searchable& config)
 
     if (config.check("usePreset")) {
         m_usePreset = config.find("usePreset").asBool();
+        yCInfo(REALSENSE2) << "Enabled Using Presets";
     }
-
+    else
+        yCInfo(REALSENSE2) << "Presets disabled";
+        
     if (m_usePreset)
     {
         std::string presetName = config.find("presetName").asString();
