@@ -24,6 +24,7 @@
 #include <yarp/dev/IRGBDSensor.h>
 #include <yarp/dev/RGBDSensorParamParser.h>
 #include <librealsense2/rs.hpp>
+#include <rs_types.h>
 
 
 class realsense2Driver :
@@ -37,7 +38,15 @@ private:
     typedef yarp::os::Stamp                           Stamp;
     typedef yarp::os::Property                        Property;
     typedef yarp::sig::FlexImage                      FlexImage;
-
+    const std::map<std::string, rs2_rs400_visual_preset>    presetsMap{
+        {"CUSTOM",              rs2_rs400_visual_preset::RS2_RS400_VISUAL_PRESET_CUSTOM},
+        {"DEFAULT",             rs2_rs400_visual_preset::RS2_RS400_VISUAL_PRESET_DEFAULT},
+        {"HAND",                rs2_rs400_visual_preset::RS2_RS400_VISUAL_PRESET_HAND},
+        {"HIGH_ACCURACY",       rs2_rs400_visual_preset::RS2_RS400_VISUAL_PRESET_HIGH_ACCURACY},
+        {"PRESET_HIGH_DENSITY", rs2_rs400_visual_preset::RS2_RS400_VISUAL_PRESET_HIGH_DENSITY},
+        {"MEDIUM_DENSITY",      rs2_rs400_visual_preset::RS2_RS400_VISUAL_PRESET_MEDIUM_DENSITY},
+        {"REMOVE_IR_PATTERN",   rs2_rs400_visual_preset::RS2_RS400_VISUAL_PRESET_REMOVE_IR_PATTERN}
+    };
 
 public:
     realsense2Driver();
@@ -116,6 +125,7 @@ protected:
     bool        pipelineRestart();
     bool        setFramerate(const int _fps);
     void        fallback();
+    bool        setPreset(rs2_rs400_visual_preset preset);
 
 
     // realsense classes
@@ -149,5 +159,6 @@ protected:
     float m_scale;
     bool m_rotateImage180{false};
     std::vector<cameraFeature_id_t> m_supportedFeatures;
+    bool m_usePreset{false};
 };
 #endif

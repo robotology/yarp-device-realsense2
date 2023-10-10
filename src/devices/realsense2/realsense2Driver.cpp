@@ -588,6 +588,10 @@ bool realsense2Driver::initializeRealsenseDevice()
     }
     if (!pipelineStartup())
         return false;
+    
+    if(!setPreset())
+        
+
     m_initialized = true;
 
     //TODO: if more are connected?!
@@ -833,6 +837,31 @@ bool realsense2Driver::open(Searchable& config)
     m_verbose = config.check("verbose");
     if (config.check("stereoMode")) {
         m_stereoMode = config.find("stereoMode").asBool();
+    }
+
+    if (config.check("usePreset")) {
+        m_usePreset = config.find("usePreset").asBool();
+    }
+
+    if (m_usePreset)
+    {
+        std::string presetName = config.check("presetName").asString();
+        std::transform(presetName.begin(), presetName.end(), presetName.begin(), std::toupper);
+        presetName = std::toupper()
+        if (presetsMap.find(presetName) == presetsMap.end()) {
+            yCError(REALSENSE2) <<  "Value " << presetName << " not allowed as camera preset, see documentation for supported values.";
+        }
+        else
+        {
+            if(!setPreset(presetsMap.at(presetName)))
+            {
+                yCError(REALSENSE2) << "Unable to set preset: " << presetName;
+            }
+            else
+            {
+                yCInfo(REALSENSE2) << "Using Preset: " << presetName;
+            }   
+        }
     }
 
     if (!m_paramParser.parseParam(config, params))
@@ -1678,4 +1707,20 @@ int  realsense2Driver::height() const
 int  realsense2Driver::width() const
 {
     return m_infrared_intrin.width*2;
+}
+
+bool realsense2Driver::setPreset(rs2_rs400_visual_preset preset)
+{
+    try
+    {
+        auto sensor = m_profile.get_device().first<rs2::depth_sensor>();
+        sensor.set_option(rs2_option::RS2_OPTION_VISUAL_PRESET, 
+                            preset);
+    }
+    catch(const std::exception& e)
+    {
+        yCError(REALSENSE2) << e.what();
+        return false;
+    }
+    return true;
 }
