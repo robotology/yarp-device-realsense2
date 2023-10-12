@@ -589,12 +589,12 @@ bool realsense2Driver::initializeRealsenseDevice()
     }
     if (!pipelineStartup())
         return false;
-    
-    if(!setPreset(m_presetName))
+
+    if (m_usePreset)
     {
-        yCError(REALSENSE2) << "Unable to set preset: "<< m_presetName;
+        if(!setPreset(m_presetName))
+            yCError(REALSENSE2) << "Unable to set preset: "<< m_presetName;
     }
-        
 
     m_initialized = true;
 
