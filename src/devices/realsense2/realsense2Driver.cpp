@@ -8,6 +8,7 @@
 
 #include <cmath>
 #include <algorithm>
+#include <string>
 #include <iomanip>
 #include <cstdint>
 
@@ -588,6 +589,13 @@ bool realsense2Driver::initializeRealsenseDevice()
     }
     if (!pipelineStartup())
         return false;
+
+    if (m_usePreset)
+    {
+        if(!setPreset(m_presetName))
+            yCError(REALSENSE2) << "Unable to set preset: "<< m_presetName;
+    }
+
     m_initialized = true;
 
     //TODO: if more are connected?!
@@ -833,6 +841,27 @@ bool realsense2Driver::open(Searchable& config)
     m_verbose = config.check("verbose");
     if (config.check("stereoMode")) {
         m_stereoMode = config.find("stereoMode").asBool();
+    }
+
+    if (config.check("usePreset")) {
+        m_usePreset = config.find("usePreset").asBool();
+        yCInfo(REALSENSE2) << "Enabled Using Presets";
+    }
+    else
+        yCInfo(REALSENSE2) << "Presets disabled";
+
+    if (m_usePreset)
+    {
+        std::string presetName = config.find("presetName").asString();
+        std::transform(presetName.begin(), presetName.end(), presetName.begin(), ::toupper);
+        if (presetsMap.find(presetName) == presetsMap.end()) {
+            yCError(REALSENSE2) <<  "Value " << presetName << " not allowed as camera preset, see documentation for supported values.";
+        }
+        else
+        {
+            m_presetName = presetsMap.at(presetName);
+            yCInfo(REALSENSE2) << "Found requested preset: " << presetName;
+        }
     }
 
     if (!m_paramParser.parseParam(config, params))
@@ -1678,4 +1707,20 @@ int  realsense2Driver::height() const
 int  realsense2Driver::width() const
 {
     return m_infrared_intrin.width*2;
+}
+
+bool realsense2Driver::setPreset(rs2_rs400_visual_preset preset)
+{
+    try
+    {
+        auto sensor = m_profile.get_device().first<rs2::depth_sensor>();
+        sensor.set_option(rs2_option::RS2_OPTION_VISUAL_PRESET, 
+                            preset);
+    }
+    catch(const std::exception& e)
+    {
+        yCError(REALSENSE2) << "Error while setting preset: " << e.what();
+        return false;
+    }
+    return true;
 }
