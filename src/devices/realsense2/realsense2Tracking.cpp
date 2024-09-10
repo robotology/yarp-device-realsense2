@@ -460,6 +460,63 @@ bool realsense2Tracking::getPositionSensorMeasure(size_t sens_index, yarp::sig::
     return true;
 }
 
+/* IVelocitySensors methods */
+size_t realsense2Tracking::getNrOfVelocitySensors() const
+{
+    return 1;
+}
+
+yarp::dev::MAS_status realsense2Tracking::getVelocitySensorStatus(size_t sens_index) const
+{
+    if (sens_index != 0) { return yarp::dev::MAS_status::MAS_UNKNOWN; }
+    return yarp::dev::MAS_status::MAS_OK;
+}
+
+bool realsense2Tracking::getVelocitySensorName(size_t sens_index, std::string& name) const
+{
+    if (sens_index != 0) { return false; }
+    name = m_inertial_sensor_name_prefix + "/" + m_pose_sensor_tag;
+    return true;
+}
+
+bool realsense2Tracking::getVelocitySensorFrameName(size_t sens_index, std::string& frameName) const
+{
+    if (sens_index != 0) { return false; }
+    frameName = m_poseFrameName;
+    return true;
+}
+
+
+bool realsense2Tracking::getVelocitySensorMeasure(size_t sens_index, yarp::sig::Vector& xyz, double& timestamp) const
+{
+    if (sens_index != 0) { return false; }
+
+    std::lock_guard<std::mutex> guard(m_mutex);
+    rs2::frameset dataframe;
+    try
+    {
+        dataframe = m_pipeline.wait_for_frames();
+    }
+    catch (const rs2::error& e)
+    {
+        yCError(REALSENSE2TRACKING) << "m_pipeline.wait_for_frames() failed with error:"<< "(" << e.what() << ")";
+        m_lastError = e.what();
+        return false;
+    }
+    auto fa = dataframe.first_or_default(RS2_STREAM_POSE);
+    rs2::pose_frame pose = fa.as<rs2::pose_frame>();
+    m_last_pose = pose.get_pose_data();
+    if (m_timestamp_type == yarp_timestamp) { timestamp = yarp::os::Time::now(); }
+    else if (m_timestamp_type == rs_timestamp) { timestamp = pose.get_timestamp(); }
+    else timestamp = 0;
+    xyz.resize(3);
+    xyz[0] = m_last_pose.velocity.x;
+    xyz[1] = m_last_pose.velocity.y;
+    xyz[2] = m_last_pose.velocity.z;
+
+    return true;
+}
+
 int realsense2Tracking::read(yarp::sig::Vector& out)
 {
     // Publishes the data in the analog port as:
