@@ -525,8 +525,6 @@ bool realsense2Tracking::getVelocitySensorMeasure(size_t sens_index, yarp::sig::
 
 int realsense2Tracking::read(yarp::sig::Vector& out)
 {
-    // Publishes the data in the analog port as:
-    // <positionX positionY positionZ QuaternionW QuaternionX QuaternionY QuaternionZ>
     std::lock_guard<std::mutex> guard(m_mutex);
     rs2::frameset dataframe = m_pipeline.wait_for_frames();
     auto fa = dataframe.first_or_default(RS2_STREAM_POSE);
@@ -541,6 +539,18 @@ int realsense2Tracking::read(yarp::sig::Vector& out)
     out[4] = m_last_pose.rotation.x;
     out[5] = m_last_pose.rotation.y;
     out[6] = m_last_pose.rotation.z;
+    out[7] = m_last_pose.velocity.x;
+    out[8] = m_last_pose.velocity.y;
+    out[9] = m_last_pose.velocity.z;
+    out[10] = m_last_pose.angular_velocity.x;
+    out[11] = m_last_pose.angular_velocity.y;
+    out[12] = m_last_pose.angular_velocity.z;
+    out[13] = m_last_pose.acceleration.x;
+    out[14] = m_last_pose.acceleration.y;
+    out[15] = m_last_pose.acceleration.z;
+    out[16] = m_last_pose.angular_acceleration.x;
+    out[17] = m_last_pose.angular_acceleration.y;
+    out[18] = m_last_pose.angular_acceleration.z;
     return 0;
 }
 
@@ -552,7 +562,7 @@ int realsense2Tracking::getState(int ch)
 
 int realsense2Tracking::getChannels()
 {
-    return 7;
+    return 19;
 }
 
 int realsense2Tracking::calibrateSensor()
