@@ -31,6 +31,7 @@ class realsense2Tracking :
         public yarp::dev::DeviceDriver,
         public yarp::dev::IThreeAxisGyroscopes,
         public yarp::dev::IThreeAxisLinearAccelerometers,
+        public yarp::dev::IThreeAxisAngularAccelerometers,
         public yarp::dev::IOrientationSensors,
         public yarp::dev::IPositionSensors,
         public yarp::dev::IVelocitySensors,
@@ -71,6 +72,13 @@ public:
     bool getThreeAxisLinearAccelerometerName(size_t sens_index, std::string& name) const override;
     bool getThreeAxisLinearAccelerometerFrameName(size_t sens_index, std::string& frameName) const override;
     bool getThreeAxisLinearAccelerometerMeasure(size_t sens_index, yarp::sig::Vector& out, double& timestamp) const override;
+
+    /* IThreeAxisAngularAccelerometers methods */
+    size_t getNrOfThreeAxisAngularAccelerometers() const override;
+    yarp::dev::MAS_status getThreeAxisAngularAccelerometerStatus(size_t sens_index) const override;
+    bool getThreeAxisAngularAccelerometerName(size_t sens_index, std::string& name) const override;
+    bool getThreeAxisAngularAccelerometerFrameName(size_t sens_index, std::string& frameName) const override;
+    bool getThreeAxisAngularAccelerometerMeasure(size_t sens_index, yarp::sig::Vector& out, double& timestamp) const override;
 
     /* IOrientationSensors methods */
     size_t getNrOfOrientationSensors() const override;
