@@ -374,7 +374,7 @@ bool realsense2Tracking::getThreeAxisAngularAccelerometerFrameName(size_t sens_i
 }
 
 
-bool realsense2Tracking::getThreeAxisAngularAccelerometerMeasure(size_t sens_index, yarp::sig::Vector& xyz, double& timestamp) const
+bool realsense2Tracking::getThreeAxisAngularAccelerometerMeasure(size_t sens_index, yarp::sig::Vector& out, double& timestamp) const
 {
     if (sens_index != 0) { return false; }
 
@@ -396,10 +396,10 @@ bool realsense2Tracking::getThreeAxisAngularAccelerometerMeasure(size_t sens_ind
     if (m_timestamp_type == yarp_timestamp) { timestamp = yarp::os::Time::now(); }
     else if (m_timestamp_type == rs_timestamp) { timestamp = pose.get_timestamp(); }
     else timestamp = 0;
-    xyz.resize(3);
-    xyz[0] = m_last_pose.angular_acceleration.x;
-    xyz[1] = m_last_pose.angular_acceleration.y;
-    xyz[2] = m_last_pose.angular_acceleration.z;
+    out.resize(3);
+    out[0] = m_last_pose.angular_acceleration.x;
+    out[1] = m_last_pose.angular_acceleration.y;
+    out[2] = m_last_pose.angular_acceleration.z;
 
     return true;
 }
