@@ -590,7 +590,7 @@ int realsense2Tracking::read(yarp::sig::Vector& out)
     rs2::pose_frame pose = fa.as<rs2::pose_frame>();
     m_last_pose = pose.get_pose_data();
 
-    out.resize(19);
+    out.resize(getChannels());
     out[0] = m_last_pose.translation.x;
     out[1] = m_last_pose.translation.y;
     out[2] = m_last_pose.translation.z;
