@@ -211,11 +211,6 @@ bool realsense2Tracking::open(Searchable& config)
     m_cfg.enable_stream(RS2_STREAM_GYRO, RS2_FORMAT_MOTION_XYZ32F);
     m_cfg.enable_stream(RS2_STREAM_POSE, RS2_FORMAT_6DOF);
 
-    m_profile = m_cfg.resolve(m_pipeline);
-    std::vector< rs2::sensor > sensors = m_profile.get_device().query_sensors();
-    sensors[0].set_option(RS2_OPTION_ENABLE_POSE_JUMPING, 0.f);
-
-
     b &= pipelineStartup();
     if (b==false)
     {
