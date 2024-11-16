@@ -525,26 +525,26 @@ bool realsense2Tracking::getPositionSensorMeasure(size_t sens_index, yarp::sig::
     return true;
 }
 
-/* IVelocitySensors methods */
-size_t realsense2Tracking::getNrOfVelocitySensors() const
+/* ILinearVelocitySensors methods */
+size_t realsense2Tracking::getNrOfLinearVelocitySensors() const
 {
     return 1;
 }
 
-yarp::dev::MAS_status realsense2Tracking::getVelocitySensorStatus(size_t sens_index) const
+yarp::dev::MAS_status realsense2Tracking::getLinearVelocitySensorStatus(size_t sens_index) const
 {
     if (sens_index != 0) { return yarp::dev::MAS_status::MAS_UNKNOWN; }
     return yarp::dev::MAS_status::MAS_OK;
 }
 
-bool realsense2Tracking::getVelocitySensorName(size_t sens_index, std::string& name) const
+bool realsense2Tracking::getLinearVelocitySensorName(size_t sens_index, std::string& name) const
 {
     if (sens_index != 0) { return false; }
     name = m_inertial_sensor_name_prefix + "/" + m_pose_sensor_tag;
     return true;
 }
 
-bool realsense2Tracking::getVelocitySensorFrameName(size_t sens_index, std::string& frameName) const
+bool realsense2Tracking::getLinearVelocitySensorFrameName(size_t sens_index, std::string& frameName) const
 {
     if (sens_index != 0) { return false; }
     frameName = m_poseFrameName;
@@ -552,7 +552,7 @@ bool realsense2Tracking::getVelocitySensorFrameName(size_t sens_index, std::stri
 }
 
 
-bool realsense2Tracking::getVelocitySensorMeasure(size_t sens_index, yarp::sig::Vector& xyz, double& timestamp) const
+bool realsense2Tracking::getLinearVelocitySensorMeasure(size_t sens_index, yarp::sig::Vector& xyz, double& timestamp) const
 {
     if (sens_index != 0) { return false; }
 
