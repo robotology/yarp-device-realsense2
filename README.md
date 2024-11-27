@@ -37,17 +37,17 @@ Before proceeding further, please install the following dependencies:
 
 - [librealsense](https://github.com/IntelRealSense/librealsense)
 
-### Configure YARP
+### YARP compilation from source
 
-Before proceeding further, please enable the following CMake flags in YARP:
+If you are using `yarp` binary package from conda-forge or you compiled `yarp` via the `robotology-superbuild`, go to the next section.
+
+**Only** if instead you manually compiled YARP, please make sure that the following CMake flags are enabled in the YARP CMake build:
 ```
-ENABLE_yarpmod_RGBDSensorWrapper
+ENABLE_yarpmod_rgbdSensor_nws_yarp
 ENABLE_yarpmod_RGBDSensorClient
 ENABLE_yarpcar_mjpeg
 ENABLE_yarppm_depthimage_to_rgb
 ```
-
-:bulb: **NOTE:** If you use YARP < 3.5, instead of the option `ENABLE_yarppm_depthimage_to_rgb` you should enable the option `ENABLE_yarpcar_depthimage2`.
 
 ### Build and install yarp-device-realsense2
 
@@ -129,7 +129,7 @@ By setting the `YARP_ROBOT_NAME`, YARP finds the configuration file `RealSense_c
 `RealSense_conf.ini` contains the following settings:
 
 ```ini
-device       RGBDSensorWrapper
+device       rgbdSensor_nws_yarp
 subdevice    realsense2
 name         /depthCamera
 
@@ -159,7 +159,7 @@ To use this model of camera you can follow the same instructions above with the 
 Considering the above, a possible configuration file might be the following:
 
 ```ini
-device       RGBDSensorWrapper
+device       rgbdSensor_nws_yarp
 subdevice    realsense2
 name         /depthCamera
 
@@ -204,7 +204,7 @@ This device driver exposes the `yarp::dev::IRGBDSensor` and
 the available settings.
 See the documentation for more details about each interface.
 
-This device is paired with its server called `RGBDSensorWrapper` to stream the
+This device is paired with its server called `rgbdSensor_nws_yarp` to stream the
 images and perform remote operations.
 
 The configuration file is subdivided into 2 major sections called `SETTINGS` and
@@ -271,7 +271,7 @@ Parameters used by this device are:
 Configuration file using `.ini` format, for using as RGBD device:
 
 ```ini
-device       RGBDSensorWrapper
+device       rgbdSensor_nws_yarp
 subdevice    realsense2
 name         /depthCamera
 
