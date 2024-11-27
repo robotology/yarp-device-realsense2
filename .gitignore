@@ -37,3 +37,5 @@ build*/
 .cproject
 .settings/
 .vscode/
+.cache/
+compile_commands.json
