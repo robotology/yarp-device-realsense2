@@ -31,8 +31,10 @@ class realsense2Tracking :
         public yarp::dev::DeviceDriver,
         public yarp::dev::IThreeAxisGyroscopes,
         public yarp::dev::IThreeAxisLinearAccelerometers,
+        public yarp::dev::IThreeAxisAngularAccelerometers,
         public yarp::dev::IOrientationSensors,
         public yarp::dev::IPositionSensors,
+        public yarp::dev::ILinearVelocitySensors,
         public yarp::dev::IAnalogSensor
 {
 private:
@@ -71,6 +73,13 @@ public:
     bool getThreeAxisLinearAccelerometerFrameName(size_t sens_index, std::string& frameName) const override;
     bool getThreeAxisLinearAccelerometerMeasure(size_t sens_index, yarp::sig::Vector& out, double& timestamp) const override;
 
+    /* IThreeAxisAngularAccelerometers methods */
+    size_t getNrOfThreeAxisAngularAccelerometers() const override;
+    yarp::dev::MAS_status getThreeAxisAngularAccelerometerStatus(size_t sens_index) const override;
+    bool getThreeAxisAngularAccelerometerName(size_t sens_index, std::string& name) const override;
+    bool getThreeAxisAngularAccelerometerFrameName(size_t sens_index, std::string& frameName) const override;
+    bool getThreeAxisAngularAccelerometerMeasure(size_t sens_index, yarp::sig::Vector& out, double& timestamp) const override;
+
     /* IOrientationSensors methods */
     size_t getNrOfOrientationSensors() const override;
     yarp::dev::MAS_status getOrientationSensorStatus(size_t sens_index) const override;
@@ -84,6 +93,13 @@ public:
     bool getPositionSensorName(size_t sens_index, std::string& name) const override;
     bool getPositionSensorFrameName(size_t sens_index, std::string& frameName) const override;
     bool getPositionSensorMeasure(size_t sens_index, yarp::sig::Vector& xyz, double& timestamp) const override;
+
+    /* ILinearVelocitySensors methods */
+    size_t getNrOfLinearVelocitySensors() const override;
+    yarp::dev::MAS_status getLinearVelocitySensorStatus(size_t sens_index) const override;
+    bool getLinearVelocitySensorName(size_t sens_index, std::string& name) const override;
+    bool getLinearVelocitySensorFrameName(size_t sens_index, std::string& frameName) const override;
+    bool getLinearVelocitySensorMeasure(size_t sens_index, yarp::sig::Vector& xyz, double& timestamp) const override;
 
     /* IAnalogSensor methods */
     int read(yarp::sig::Vector &out) override;
