@@ -593,18 +593,12 @@ int realsense2Tracking::read(yarp::sig::Vector& out)
     out[4] = m_last_pose.rotation.x;
     out[5] = m_last_pose.rotation.y;
     out[6] = m_last_pose.rotation.z;
-    out[7] = m_last_pose.velocity.x;
-    out[8] = m_last_pose.velocity.y;
-    out[9] = m_last_pose.velocity.z;
-    out[10] = m_last_pose.angular_velocity.x;
-    out[11] = m_last_pose.angular_velocity.y;
-    out[12] = m_last_pose.angular_velocity.z;
-    out[13] = m_last_pose.acceleration.x;
-    out[14] = m_last_pose.acceleration.y;
-    out[15] = m_last_pose.acceleration.z;
-    out[16] = m_last_pose.angular_acceleration.x;
-    out[17] = m_last_pose.angular_acceleration.y;
-    out[18] = m_last_pose.angular_acceleration.z;
+    out[7] = m_last_pose.angular_velocity.x;
+    out[8] = m_last_pose.angular_velocity.y;
+    out[9] = m_last_pose.angular_velocity.z;
+    out[10] = m_last_pose.acceleration.x;
+    out[11] = m_last_pose.acceleration.y;
+    out[12] = m_last_pose.acceleration.z;
     return 0;
 }
 
