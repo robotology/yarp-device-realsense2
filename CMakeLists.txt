@@ -7,7 +7,7 @@
 cmake_minimum_required(VERSION 3.12)
 project(yarp-device-realsense2
         LANGUAGES CXX
-        VERSION 0.3.0)
+        VERSION 0.3.1)
 
 include(FeatureSummary)
 
