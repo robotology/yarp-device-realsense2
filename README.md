@@ -36,14 +36,14 @@ First of all, please install the `yarp-device-realsense2` following one (and jus
 
 ## Install with conda or pixi (easy)
 
-You can easily the library with [`conda`](https://github.com/conda-forge/yarp-device-realsense2-feedstock) in a new conda environment with
+You can easily the library with [`conda`](https://docs.conda.io/en/latest/) in a new conda environment with
 ```
 conda create -n newenvname -c conda-forge yarp-device-realsense2
 ```
 
 `conda` will automatically install all the supported dependencies.
 
-To add yarp-device-realsense2 to a `pixi` project, just run:
+To add yarp-device-realsense2 to a [`pixi`](https://pixi.sh/latest/) project, just run:
 
 ```
 pixi add yarp-device-realsense2
