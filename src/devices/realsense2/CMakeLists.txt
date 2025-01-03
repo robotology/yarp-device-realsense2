@@ -8,7 +8,7 @@ yarp_prepare_plugin(realsense2
   CATEGORY device
   TYPE realsense2Driver
   INCLUDE realsense2Driver.h
-  EXTRA_CONFIG WRAPPER=RGBDSensorWrapper
+  EXTRA_CONFIG WRAPPER=rgbdSensor_nws_yarp
   DEPENDS "realsense2_FOUND"
   DEFAULT ON
 )
@@ -46,7 +46,7 @@ yarp_prepare_plugin(realsense2withIMU
   CATEGORY device
   TYPE realsense2withIMUDriver
   INCLUDE realsense2withIMUDriver.h
-  EXTRA_CONFIG WRAPPER=RGBDSensorWrapper
+  EXTRA_CONFIG WRAPPER=rgbdSensor_nws_yarp
   DEPENDS "TARGET YARP::YARP_math;realsense2_FOUND;"
   DEFAULT ON
 )
