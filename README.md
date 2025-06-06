@@ -32,6 +32,29 @@ See the relative documentation for the terms of the license.
 How to use Intel RealSense cameras as a YARP device
 ---------------------------------------------------
 
+First of all, please install the `yarp-device-realsense2` following one (and just one) method listed below, and the move to the `Usage` section.
+
+## Install with conda or pixi (easy)
+
+You can easily the library with [`conda`](https://docs.conda.io/en/latest/) in a new conda environment with
+```
+conda create -n newenvname -c conda-forge yarp-device-realsense2
+```
+
+`conda` will automatically install all the supported dependencies.
+
+To add yarp-device-realsense2 to a [`pixi`](https://pixi.sh/latest/) project, just run:
+
+```
+pixi add yarp-device-realsense2
+```
+
+## Installation from source (advanced)
+
+If you want to use a package manager (for example `apt` on Ubuntu) that does not provide `yarp-device-realsense2` packages, you can do that
+as `yarp-device-realsense2` is a fairly standard CMake project. To do that, first of all install either via a package
+manager or manually the following depencies:
+
 ### Dependencies
 Before proceeding further, please install the following dependencies:
 
@@ -62,6 +85,8 @@ make install
 In order to make the device detectable, add `<installation_path>/share/yarp` to the `YARP_DATA_DIRS` environment variable of the system.
 
 Alternatively, if `YARP` has been installed using the [robotology-superbuild](https://github.com/robotology/robotology-superbuild), it is possible to use `<directory-where-you-downloaded-robotology-superbuild>/build/install` as the `<installation_path>`.
+
+## Usage
 
 ### How to use a RealSense D435
 
@@ -116,7 +141,7 @@ You can write a yarp application to launch the camera and see the RGB and Depth 
 :bulb: **NOTE:** When using YARP < 3.5, the final part of the `protocol` string should be changed from `+file.depthimage_to_rgb` to `+file.depthimage2`.
 
 
-#### From the command line
+### From the command line
 
 Set the `YARP_ROBOT_NAME` to either `CER01`, `CER02` or `CER03`. Then, run the command:
 
