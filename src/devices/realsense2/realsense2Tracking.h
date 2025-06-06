@@ -34,8 +34,7 @@ class realsense2Tracking :
         public yarp::dev::IThreeAxisAngularAccelerometers,
         public yarp::dev::IOrientationSensors,
         public yarp::dev::IPositionSensors,
-        public yarp::dev::ILinearVelocitySensors,
-        public yarp::dev::IAnalogSensor
+        public yarp::dev::ILinearVelocitySensors
 {
 private:
     typedef yarp::os::Stamp Stamp;
@@ -101,14 +100,6 @@ public:
     bool getLinearVelocitySensorFrameName(size_t sens_index, std::string& frameName) const override;
     bool getLinearVelocitySensorMeasure(size_t sens_index, yarp::sig::Vector& xyz, double& timestamp) const override;
 
-    /* IAnalogSensor methods */
-    int read(yarp::sig::Vector &out) override;
-    int getState(int ch) override;
-    int getChannels() override;
-    int calibrateSensor() override;
-    int calibrateSensor(const yarp::sig::Vector& value) override;
-    int calibrateChannel(int ch) override;
-    int calibrateChannel(int ch, double value) override;
 
 #if 0
     /* IPoseSensors methods */
