@@ -7,7 +7,7 @@
 cmake_minimum_required(VERSION 3.12)
 project(yarp-device-realsense2
         LANGUAGES CXX
-        VERSION 0.3.1)
+        VERSION 0.4.0)
 
 include(FeatureSummary)
 
@@ -50,7 +50,7 @@ set_property(GLOBAL PROPERTY USE_FOLDERS 1)
 
 include(AddUninstallTarget)
 
-find_package(YARP 3.5 COMPONENTS os sig dev OPTIONAL_COMPONENTS math REQUIRED)
+find_package(YARP 3.11 COMPONENTS os sig dev OPTIONAL_COMPONENTS math REQUIRED)
 set(CMAKE_C_FLAGS "${YARP_C_FLAGS} ${CMAKE_C_FLAGS}")
 set(CMAKE_CXX_FLAGS "${YARP_CXX_FLAGS} ${CMAKE_CXX_FLAGS}")
 

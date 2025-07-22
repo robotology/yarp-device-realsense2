@@ -210,6 +210,7 @@ bool realsense2Tracking::open(Searchable& config)
     m_cfg.enable_stream(RS2_STREAM_ACCEL, RS2_FORMAT_MOTION_XYZ32F);
     m_cfg.enable_stream(RS2_STREAM_GYRO, RS2_FORMAT_MOTION_XYZ32F);
     m_cfg.enable_stream(RS2_STREAM_POSE, RS2_FORMAT_6DOF);
+
     b &= pipelineStartup();
     if (b==false)
     {
@@ -341,6 +342,65 @@ bool realsense2Tracking::getThreeAxisLinearAccelerometerMeasure(size_t sens_inde
     return true;
 }
 
+/* IThreeAxisAngularAcclerometer Sensors methods */
+size_t realsense2Tracking::getNrOfThreeAxisAngularAccelerometers() const
+{
+    return 1;
+}
+
+yarp::dev::MAS_status realsense2Tracking::getThreeAxisAngularAccelerometerStatus(size_t sens_index) const
+{
+    if (sens_index != 0) { return yarp::dev::MAS_status::MAS_UNKNOWN; }
+    return yarp::dev::MAS_status::MAS_OK;
+}
+
+bool realsense2Tracking::getThreeAxisAngularAccelerometerName(size_t sens_index, std::string& name) const
+{
+    if (sens_index != 0) { return false; }
+    name = m_inertial_sensor_name_prefix + "/" + m_pose_sensor_tag;
+    return true;
+}
+
+bool realsense2Tracking::getThreeAxisAngularAccelerometerFrameName(size_t sens_index, std::string& frameName) const
+{
+    if (sens_index != 0) { return false; }
+    frameName = m_poseFrameName;
+    return true;
+}
+
+
+bool realsense2Tracking::getThreeAxisAngularAccelerometerMeasure(size_t sens_index, yarp::sig::Vector& out, double& timestamp) const
+{
+    if (sens_index != 0) { return false; }
+
+    std::lock_guard<std::mutex> guard(m_mutex);
+    rs2::frameset dataframe;
+    try
+    {
+        dataframe = m_pipeline.wait_for_frames();
+    }
+    catch (const rs2::error& e)
+    {
+        yCError(REALSENSE2TRACKING) << "m_pipeline.wait_for_frames() failed with error:"<< "(" << e.what() << ")";
+        m_lastError = e.what();
+        return false;
+    }
+    auto fa = dataframe.first_or_default(RS2_STREAM_POSE);
+    rs2::pose_frame pose = fa.as<rs2::pose_frame>();
+    m_last_pose = pose.get_pose_data();
+    if (m_timestamp_type == yarp_timestamp) { timestamp = yarp::os::Time::now(); }
+    else if (m_timestamp_type == rs_timestamp) { timestamp = pose.get_timestamp(); }
+    else timestamp = 0;
+    out.resize(3);
+    out[0] = m_last_pose.angular_acceleration.x;
+    out[1] = m_last_pose.angular_acceleration.y;
+    out[2] = m_last_pose.angular_acceleration.z;
+
+    return true;
+}
+
+
+
 //-------------------------------------------------------------------------------------------------------
 
 /* IOrientationSensors methods */
@@ -460,59 +520,62 @@ bool realsense2Tracking::getPositionSensorMeasure(size_t sens_index, yarp::sig::
     return true;
 }
 
-int realsense2Tracking::read(yarp::sig::Vector& out)
+/* ILinearVelocitySensors methods */
+size_t realsense2Tracking::getNrOfLinearVelocitySensors() const
 {
-    // Publishes the data in the analog port as:
-    // <positionX positionY positionZ QuaternionW QuaternionX QuaternionY QuaternionZ>
+    return 1;
+}
+
+yarp::dev::MAS_status realsense2Tracking::getLinearVelocitySensorStatus(size_t sens_index) const
+{
+    if (sens_index != 0) { return yarp::dev::MAS_status::MAS_UNKNOWN; }
+    return yarp::dev::MAS_status::MAS_OK;
+}
+
+bool realsense2Tracking::getLinearVelocitySensorName(size_t sens_index, std::string& name) const
+{
+    if (sens_index != 0) { return false; }
+    name = m_inertial_sensor_name_prefix + "/" + m_pose_sensor_tag;
+    return true;
+}
+
+bool realsense2Tracking::getLinearVelocitySensorFrameName(size_t sens_index, std::string& frameName) const
+{
+    if (sens_index != 0) { return false; }
+    frameName = m_poseFrameName;
+    return true;
+}
+
+
+bool realsense2Tracking::getLinearVelocitySensorMeasure(size_t sens_index, yarp::sig::Vector& xyz, double& timestamp) const
+{
+    if (sens_index != 0) { return false; }
+
     std::lock_guard<std::mutex> guard(m_mutex);
-    rs2::frameset dataframe = m_pipeline.wait_for_frames();
+    rs2::frameset dataframe;
+    try
+    {
+        dataframe = m_pipeline.wait_for_frames();
+    }
+    catch (const rs2::error& e)
+    {
+        yCError(REALSENSE2TRACKING) << "m_pipeline.wait_for_frames() failed with error:"<< "(" << e.what() << ")";
+        m_lastError = e.what();
+        return false;
+    }
     auto fa = dataframe.first_or_default(RS2_STREAM_POSE);
     rs2::pose_frame pose = fa.as<rs2::pose_frame>();
     m_last_pose = pose.get_pose_data();
+    if (m_timestamp_type == yarp_timestamp) { timestamp = yarp::os::Time::now(); }
+    else if (m_timestamp_type == rs_timestamp) { timestamp = pose.get_timestamp(); }
+    else timestamp = 0;
+    xyz.resize(3);
+    xyz[0] = m_last_pose.velocity.x;
+    xyz[1] = m_last_pose.velocity.y;
+    xyz[2] = m_last_pose.velocity.z;
 
-    out.resize(7);
-    out[0] = m_last_pose.translation.x;
-    out[1] = m_last_pose.translation.y;
-    out[2] = m_last_pose.translation.z;
-    out[3] = m_last_pose.rotation.w;
-    out[4] = m_last_pose.rotation.x;
-    out[5] = m_last_pose.rotation.y;
-    out[6] = m_last_pose.rotation.z;
-    return 0;
+    return true;
 }
-
-int realsense2Tracking::getState(int ch)
-{
-    return 0;
-}
-
-
-int realsense2Tracking::getChannels()
-{
-    return 7;
-}
-
-int realsense2Tracking::calibrateSensor()
-{
-    return 0;
-}
-
-int realsense2Tracking::calibrateSensor(const yarp::sig::Vector& value)
-{
-    return 0;
-}
-
-int realsense2Tracking::calibrateChannel(int ch)
-{
-    return 0;
-}
-
-int realsense2Tracking::calibrateChannel(int ch, double value)
-{
-    return 0;
-}
-
-
 
 
 //-------------------------------------------------------------------------------------------------------
