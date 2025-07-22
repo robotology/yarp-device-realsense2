@@ -846,7 +846,12 @@ bool realsense2Driver::open(Searchable& config)
 
     if (config.check("useVisualPreset")) {
         m_useVisualPreset = config.find("useVisualPreset").asBool();
-        yCInfo(REALSENSE2) << "Enabled  visual presets";
+        if (m_useVisualPreset){
+            yCInfo(REALSENSE2) << "Enabled  visual presets";
+        }
+        else{
+            yCInfo(REALSENSE2) << "Visual presets disabled";
+        }
     }
     else{
         yCInfo(REALSENSE2) << "Visual presets disabled";
