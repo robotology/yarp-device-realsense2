@@ -862,7 +862,7 @@ bool realsense2Driver::open(Searchable& config)
         }
         else
         {
-            m_visualPresetName = presetsMap.at(visualPresetName);
+            m_visualPresetName = visualPresetsMap.at(visualPresetName);
             yCInfo(REALSENSE2) << "Found requested preset: " << visualPresetName;
         }
     }
