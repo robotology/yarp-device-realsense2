@@ -590,10 +590,11 @@ bool realsense2Driver::initializeRealsenseDevice()
     if (!pipelineStartup())
         return false;
 
-    if (m_usePreset)
+    if (m_useVisualPreset)
     {
-        if(!setPreset(m_presetName))
-            yCError(REALSENSE2) << "Unable to set preset: "<< m_presetName;
+        if(!setPreset(m_visualPresetName))
+            yCError(REALSENSE2) << "Unable to set visual preset: "<< m_visualPresetName;
+            return false;
     }
 
     m_initialized = true;
@@ -843,24 +844,26 @@ bool realsense2Driver::open(Searchable& config)
         m_stereoMode = config.find("stereoMode").asBool();
     }
 
-    if (config.check("usePreset")) {
-        m_usePreset = config.find("usePreset").asBool();
-        yCInfo(REALSENSE2) << "Enabled Using Presets";
+    if (config.check("useVisualPreset")) {
+        m_useVisualPreset = config.find("useVisualPreset").asBool();
+        yCInfo(REALSENSE2) << "Enabled  visual presets";
     }
-    else
-        yCInfo(REALSENSE2) << "Presets disabled";
+    else{
+        yCInfo(REALSENSE2) << "Visual presets disabled";
+    }
 
-    if (m_usePreset)
+    if (m_useVisualPreset)
     {
-        std::string presetName = config.find("presetName").asString();
-        std::transform(presetName.begin(), presetName.end(), presetName.begin(), ::toupper);
-        if (presetsMap.find(presetName) == presetsMap.end()) {
-            yCError(REALSENSE2) <<  "Value " << presetName << " not allowed as camera preset, see documentation for supported values.";
+        std::string visualPresetName = config.find("visualPresetName").asString();
+        std::transform(visualPresetName.begin(), visualPresetName.end(), visualPresetName.begin(), ::toupper);
+        if (visualPresetsMap.find(visualPresetName) == visualPresetsMap.end()) {
+            yCError(REALSENSE2) <<  "Value " << visualPresetName << " not allowed as camera preset, see documentation for supported values.";
+            return false;
         }
         else
         {
-            m_presetName = presetsMap.at(presetName);
-            yCInfo(REALSENSE2) << "Found requested preset: " << presetName;
+            m_visualPresetName = presetsMap.at(visualPresetName);
+            yCInfo(REALSENSE2) << "Found requested preset: " << visualPresetName;
         }
     }
 

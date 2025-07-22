@@ -38,14 +38,14 @@ private:
     typedef yarp::os::Stamp                           Stamp;
     typedef yarp::os::Property                        Property;
     typedef yarp::sig::FlexImage                      FlexImage;
-    const std::map<std::string, rs2_rs400_visual_preset>    presetsMap{
-        {"CUSTOM",              rs2_rs400_visual_preset::RS2_RS400_VISUAL_PRESET_CUSTOM},
-        {"DEFAULT",             rs2_rs400_visual_preset::RS2_RS400_VISUAL_PRESET_DEFAULT},
-        {"HAND",                rs2_rs400_visual_preset::RS2_RS400_VISUAL_PRESET_HAND},
-        {"HIGH_ACCURACY",       rs2_rs400_visual_preset::RS2_RS400_VISUAL_PRESET_HIGH_ACCURACY},
-        {"PRESET_HIGH_DENSITY", rs2_rs400_visual_preset::RS2_RS400_VISUAL_PRESET_HIGH_DENSITY},
-        {"MEDIUM_DENSITY",      rs2_rs400_visual_preset::RS2_RS400_VISUAL_PRESET_MEDIUM_DENSITY},
-        {"REMOVE_IR_PATTERN",   rs2_rs400_visual_preset::RS2_RS400_VISUAL_PRESET_REMOVE_IR_PATTERN}
+    const std::map<std::string, rs2_rs400_visual_preset>    visualPresetsMap{
+        {"RS2_RS400_VISUAL_PRESET_CUSTOM",              rs2_rs400_visual_preset::RS2_RS400_VISUAL_PRESET_CUSTOM},
+        {"RS2_RS400_VISUAL_PRESET_DEFAULT",             rs2_rs400_visual_preset::RS2_RS400_VISUAL_PRESET_DEFAULT},
+        {"RS2_RS400_VISUAL_PRESET_HAND",                rs2_rs400_visual_preset::RS2_RS400_VISUAL_PRESET_HAND},
+        {"RS2_RS400_VISUAL_PRESET_HIGH_ACCURACY",       rs2_rs400_visual_preset::RS2_RS400_VISUAL_PRESET_HIGH_ACCURACY},
+        {"RS2_RS400_VISUAL_PRESET_HIGH_DENSITY",        rs2_rs400_visual_preset::RS2_RS400_VISUAL_PRESET_HIGH_DENSITY},
+        {"RS2_RS400_VISUAL_PRESET_MEDIUM_DENSITY",      rs2_rs400_visual_preset::RS2_RS400_VISUAL_PRESET_MEDIUM_DENSITY},
+        {"RS2_RS400_VISUAL_PRESET_REMOVE_IR_PATTERN",   rs2_rs400_visual_preset::RS2_RS400_VISUAL_PRESET_REMOVE_IR_PATTERN}
     };
 
 public:
@@ -159,7 +159,7 @@ protected:
     float m_scale;
     bool m_rotateImage180{false};
     std::vector<cameraFeature_id_t> m_supportedFeatures;
-    bool m_usePreset{false};
-    rs2_rs400_visual_preset m_presetName;
+    bool m_useVisualPreset{false};
+    rs2_rs400_visual_preset m_visualPresetName;
 };
 #endif
