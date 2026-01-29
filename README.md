@@ -12,7 +12,7 @@ The **Intel® RealSense™** cameras currently compatible with YARP are:
 - [Depth Camera D455](https://www.intelrealsense.com/depth-camera-d455/)
 - [LiDAR Camera L515](https://www.intelrealsense.com/lidar-camera-l515/)
 - [Depth Camera with IMU D435i](https://www.intelrealsense.com/depth-camera-d435i/)
-- [Tracking Camera T256](https://www.intelrealsense.com/tracking-camera-t265/)
+- [Tracking Camera T265](https://www.intelrealsense.com/tracking-camera-t265/)
 
 License
 -------
@@ -154,9 +154,10 @@ By setting the `YARP_ROBOT_NAME`, YARP finds the configuration file `RealSense_c
 `RealSense_conf.ini` contains the following settings:
 
 ```ini
-device       rgbdSensor_nws_yarp
-subdevice    realsense2
-name         /depthCamera
+device            deviceBundler
+wrapper_device    rgbdSensor_nws_yarp
+attached_device   realsense2
+name              /depthCamera
 
 [SETTINGS]
 depthResolution (480 270)    #Other possible values (424 240) or (640 480)
@@ -184,9 +185,10 @@ To use this model of camera you can follow the same instructions above with the 
 Considering the above, a possible configuration file might be the following:
 
 ```ini
-device       rgbdSensor_nws_yarp
-subdevice    realsense2
-name         /depthCamera
+device            deviceBundler
+wrapper_device    rgbdSensor_nws_yarp
+attached_device   realsense2
+name              /depthCamera
 
 [SETTINGS]
 depthResolution (640 480) # <-- Same resolution as the rgbResolution
@@ -202,19 +204,19 @@ clipPlanes (0.01 10.0)    # <-- lower bound for clipping planes set to 0.01 mete
 
 :construction: UNDER CONSTRUCTION :construction:
 
-### How to use a RealSense T256
+### How to use a RealSense T265
 
 #### From the command line
 
-The device retrieving the  RealSense T256 data is the `multipleanalogsensorserver` and it must be run as follows:
+The device retrieving the  RealSense T265 data is the `multipleanalogsensorserver` and it must be run as follows:
 
 ```bash
-yarpdev --device multipleanalogsensorsserver --name /t256 --period 10 --subdevice realsense2Tracking
+yarpdev --device deviceBundler --wrapper_device multipleanalogsensorsserver --attached_device realsense2Tracking --name /t265 --period 10
 ```
 
 :bulb: **NOTE:** the user should specify the parameters `--name` and `--period` as needed.
 
-The data from a RealSense T256 will be streamed on the port named `/t256/measures:o` following the format described in the `SensorStreamingData` class.
+The data from a RealSense T265 will be streamed on the port named `/t265/measures:o` following the format described in the `SensorStreamingData` class.
 
 The type on information currently made available are:
 
@@ -296,9 +298,10 @@ Parameters used by this device are:
 Configuration file using `.ini` format, for using as RGBD device:
 
 ```ini
-device       rgbdSensor_nws_yarp
-subdevice    realsense2
-name         /depthCamera
+device            deviceBundler
+wrapper_device    rgbdSensor_nws_yarp
+attached_device   realsense2
+name              /depthCamera
 
 [SETTINGS]
 depthResolution (640 480)    #Note the parentheses
@@ -315,9 +318,10 @@ Configuration file using `.ini` format, for using as stereo camera:
 
 
 ```ini
-device       grabberDual
-subdevice    realsense2
-name         /stereoCamera
+device            deviceBundler
+wrapper_device    grabberDual
+attached_device   realsense2
+name              /stereoCamera
 capabilities RAW
 stereoMode   true
 
