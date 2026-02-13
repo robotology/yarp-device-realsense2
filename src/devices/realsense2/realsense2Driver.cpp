@@ -8,6 +8,7 @@
 
 #include <cmath>
 #include <algorithm>
+#include <string>
 #include <iomanip>
 #include <cstdint>
 
@@ -588,6 +589,14 @@ bool realsense2Driver::initializeRealsenseDevice()
     }
     if (!pipelineStartup())
         return false;
+
+    if (m_useVisualPreset)
+    {
+        if(!setPreset(m_visualPresetName))
+            yCError(REALSENSE2) << "Unable to set visual preset: "<< m_visualPresetName;
+            return false;
+    }
+
     m_initialized = true;
 
     //TODO: if more are connected?!
@@ -833,6 +842,34 @@ bool realsense2Driver::open(Searchable& config)
     m_verbose = config.check("verbose");
     if (config.check("stereoMode")) {
         m_stereoMode = config.find("stereoMode").asBool();
+    }
+
+    if (config.check("useVisualPreset")) {
+        m_useVisualPreset = config.find("useVisualPreset").asBool();
+        if (m_useVisualPreset){
+            yCInfo(REALSENSE2) << "Enabled  visual presets";
+        }
+        else{
+            yCInfo(REALSENSE2) << "Visual presets disabled";
+        }
+    }
+    else{
+        yCInfo(REALSENSE2) << "Visual presets disabled";
+    }
+
+    if (m_useVisualPreset)
+    {
+        std::string visualPresetName = config.find("visualPresetName").asString();
+        std::transform(visualPresetName.begin(), visualPresetName.end(), visualPresetName.begin(), ::toupper);
+        if (visualPresetsMap.find(visualPresetName) == visualPresetsMap.end()) {
+            yCError(REALSENSE2) <<  "Value " << visualPresetName << " not allowed as camera preset, see documentation for supported values.";
+            return false;
+        }
+        else
+        {
+            m_visualPresetName = visualPresetsMap.at(visualPresetName);
+            yCInfo(REALSENSE2) << "Found requested preset: " << visualPresetName;
+        }
     }
 
     if (!m_paramParser.parseParam(config, params))
@@ -1678,4 +1715,20 @@ int  realsense2Driver::height() const
 int  realsense2Driver::width() const
 {
     return m_infrared_intrin.width*2;
+}
+
+bool realsense2Driver::setPreset(rs2_rs400_visual_preset preset)
+{
+    try
+    {
+        auto sensor = m_profile.get_device().first<rs2::depth_sensor>();
+        sensor.set_option(rs2_option::RS2_OPTION_VISUAL_PRESET, 
+                            preset);
+    }
+    catch(const std::exception& e)
+    {
+        yCError(REALSENSE2) << "Error while setting preset: " << e.what();
+        return false;
+    }
+    return true;
 }
