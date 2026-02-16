@@ -441,13 +441,13 @@ realsense2Driver::realsense2Driver() : m_depth_sensor(nullptr), m_color_sensor(n
     m_paramParser.isOptionalExtrinsic       = true;
 
 
-    m_supportedFeatures.push_back(YARP_FEATURE_EXPOSURE);
-    m_supportedFeatures.push_back(YARP_FEATURE_WHITE_BALANCE);
-    m_supportedFeatures.push_back(YARP_FEATURE_GAIN);
-    m_supportedFeatures.push_back(YARP_FEATURE_FRAME_RATE);
-    m_supportedFeatures.push_back(YARP_FEATURE_SHARPNESS);
-    m_supportedFeatures.push_back(YARP_FEATURE_HUE);
-    m_supportedFeatures.push_back(YARP_FEATURE_SATURATION);
+    m_supportedFeatures.push_back(cameraFeature_id_t::YARP_FEATURE_EXPOSURE);
+    m_supportedFeatures.push_back(cameraFeature_id_t::YARP_FEATURE_WHITE_BALANCE);
+    m_supportedFeatures.push_back(cameraFeature_id_t::YARP_FEATURE_GAIN);
+    m_supportedFeatures.push_back(cameraFeature_id_t::YARP_FEATURE_FRAME_RATE);
+    m_supportedFeatures.push_back(cameraFeature_id_t::YARP_FEATURE_SHARPNESS);
+    m_supportedFeatures.push_back(cameraFeature_id_t::YARP_FEATURE_HUE);
+    m_supportedFeatures.push_back(cameraFeature_id_t::YARP_FEATURE_SATURATION);
 }
 
 bool realsense2Driver::pipelineStartup()
@@ -868,20 +868,20 @@ int realsense2Driver::getRgbWidth()
     return m_color_intrin.width;
 }
 
-bool realsense2Driver::getRgbSupportedConfigurations(yarp::sig::VectorOf<CameraConfig> &configurations)
+ReturnValue realsense2Driver::getRgbSupportedConfigurations(std::vector<CameraConfig> &configurations)
 {
     yCWarning(REALSENSE2) << "getRgbSupportedConfigurations not implemented yet";
-    return false;
+    return ReturnValue::return_code::return_value_error_not_implemented_by_device;
 }
 
-bool realsense2Driver::getRgbResolution(int &width, int &height)
+ReturnValue realsense2Driver::getRgbResolution(int &width, int &height)
 {
     width  = m_color_intrin.width;
     height = m_color_intrin.height;
-    return true;
+    return ReturnValue_ok;
 }
 
-bool realsense2Driver::setDepthResolution(int width, int height)
+ReturnValue realsense2Driver::setDepthResolution(int width, int height)
 {
     if (m_depth_sensor && isSupportedFormat(*m_depth_sensor, width, height, m_fps, m_verbose))
         m_cfg.enable_stream(RS2_STREAM_DEPTH, width, height, RS2_FORMAT_Z16, m_fps);
@@ -890,18 +890,25 @@ bool realsense2Driver::setDepthResolution(int width, int height)
         if (m_initialized)
         {
             fallback();
-            return false;
+            return ReturnValue::return_code::return_value_error_method_failed;
         }
     }
 
     if (!pipelineRestart())
-        return false;
+        return ReturnValue::return_code::return_value_error_method_failed;
 
     updateTransformations();
-    return true;
+    return ReturnValue_ok;
 }
 
-bool realsense2Driver::setRgbResolution(int width, int height)
+ReturnValue realsense2Driver::getDepthResolution(int &width, int &height)
+{
+    width  = m_depth_intrin.width;
+    height = m_depth_intrin.height;
+    return ReturnValue_ok;
+}
+
+ReturnValue realsense2Driver::setRgbResolution(int width, int height)
 {
     bool fail = true;
     if (m_color_sensor && isSupportedFormat(*m_color_sensor, width, height, m_fps, m_verbose)) {
@@ -924,63 +931,67 @@ bool realsense2Driver::setRgbResolution(int width, int height)
     if (m_initialized && fail)
     {
         fallback();
-        return false;
+        return ReturnValue::return_code::return_value_error_method_failed;
     }
 
     if (!pipelineRestart())
-        return false;
+        return ReturnValue::return_code::return_value_error_method_failed;
 
     updateTransformations();
-    return true;
+    return ReturnValue_ok;
 }
 
 
-bool realsense2Driver::setRgbFOV(double horizontalFov, double verticalFov)
+ReturnValue realsense2Driver::setRgbFOV(double horizontalFov, double verticalFov)
 {
     // It seems to be not available...
-    return false;
+    return ReturnValue::return_code::return_value_error_not_implemented_by_device;
 }
 
-bool realsense2Driver::setDepthFOV(double horizontalFov, double verticalFov)
+ReturnValue realsense2Driver::setDepthFOV(double horizontalFov, double verticalFov)
 {
     // It seems to be not available...
-    return false;
+    return ReturnValue::return_code::return_value_error_not_implemented_by_device;
 }
 
-bool realsense2Driver::setDepthAccuracy(double accuracy)
+ReturnValue realsense2Driver::setDepthAccuracy(double accuracy)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
     bool ok = setOption(RS2_OPTION_DEPTH_UNITS, m_depth_sensor, accuracy);
     if (ok) {
         m_scale = accuracy;
+        return ReturnValue_ok;
     }
-    return ok;
+    m_scale=0.0;
+    return ReturnValue::return_code::return_value_error_method_failed;
 }
 
-bool realsense2Driver::getRgbFOV(double &horizontalFov, double &verticalFov)
+ReturnValue realsense2Driver::getRgbFOV(double &horizontalFov, double &verticalFov)
 {
     float fov[2];
     rs2_fov(&m_color_intrin, fov);
     horizontalFov = fov[0];
     verticalFov   = fov[1];
-    return true;
+    return ReturnValue_ok;
 }
 
-bool realsense2Driver::getRgbMirroring(bool& mirror)
+ReturnValue realsense2Driver::getRgbMirroring(bool& mirror)
 {
     yCWarning(REALSENSE2) << "Mirroring not supported";
-    return false;
+    return ReturnValue::return_code::return_value_error_not_implemented_by_device;
 }
 
-bool realsense2Driver::setRgbMirroring(bool mirror)
+ReturnValue realsense2Driver::setRgbMirroring(bool mirror)
 {
     yCWarning(REALSENSE2) << "Mirroring not supported";
-    return false;
+    return ReturnValue::return_code::return_value_error_not_implemented_by_device;
 }
 
-bool realsense2Driver::getRgbIntrinsicParam(Property& intrinsic)
+ReturnValue realsense2Driver::getRgbIntrinsicParam(Property& intrinsic)
 {
-    return setIntrinsic(intrinsic, m_color_intrin);
+    bool b = setIntrinsic(intrinsic, m_color_intrin);
+    if (b) {return ReturnValue_ok;}
+    return ReturnValue::return_code::return_value_error_method_failed;
 }
 
 int  realsense2Driver::getDepthHeight()
@@ -993,73 +1004,81 @@ int  realsense2Driver::getDepthWidth()
     return m_depth_intrin.width;
 }
 
-bool realsense2Driver::getDepthFOV(double& horizontalFov, double& verticalFov)
+ReturnValue realsense2Driver::getDepthFOV(double& horizontalFov, double& verticalFov)
 {
     float fov[2];
     rs2_fov(&m_depth_intrin, fov);
     horizontalFov = fov[0];
     verticalFov   = fov[1];
-    return true;
+    return ReturnValue_ok;
 }
 
-bool realsense2Driver::getDepthIntrinsicParam(Property& intrinsic)
+ReturnValue realsense2Driver::getDepthIntrinsicParam(Property& intrinsic)
 {
-    return setIntrinsic(intrinsic, m_depth_intrin);;
+    bool b= setIntrinsic(intrinsic, m_depth_intrin);
+    if (b) {return ReturnValue_ok;}
+    return ReturnValue::return_code::return_value_error_method_failed;
 }
 
-double realsense2Driver::getDepthAccuracy()
+ReturnValue realsense2Driver::getDepthAccuracy(double& accuracy)
 {
-    float accuracy = 0.0;
-    if (getOption(RS2_OPTION_DEPTH_UNITS, m_depth_sensor, accuracy))
+    float accf=0.0;
+    if (getOption(RS2_OPTION_DEPTH_UNITS, m_depth_sensor, accf))
     {
-        return accuracy;
+        accuracy=accf;
+        return ReturnValue_ok;
     }
-    return 0.0;
+    accuracy =0.0;
+    return ReturnValue::return_code::return_value_error_method_failed;
 }
 
-bool realsense2Driver::getDepthClipPlanes(double& nearPlane, double& farPlane)
+ReturnValue realsense2Driver::getDepthClipPlanes(double& nearPlane, double& farPlane)
 {
     if (params_map[clipPlanes].isDescription)
     {
         nearPlane = params_map[clipPlanes].val[0].asFloat64();
         farPlane  = params_map[clipPlanes].val[1].asFloat64();
-        return true;
+        return ReturnValue_ok;
     }
 
     bool ret  = getOption(RS2_OPTION_MIN_DISTANCE, m_depth_sensor, (float&) nearPlane);
     ret &= getOption(RS2_OPTION_MAX_DISTANCE, m_depth_sensor, (float&) farPlane);
-    return ret;
+    if (ret) {return ReturnValue_ok;}
+    return ReturnValue::return_code::return_value_error_method_failed;
 }
 
-bool realsense2Driver::setDepthClipPlanes(double nearPlane, double farPlane)
+ReturnValue realsense2Driver::setDepthClipPlanes(double nearPlane, double farPlane)
 {
     if (params_map[clipPlanes].isDescription)
     {
-        return false;
+        return ReturnValue::return_code::return_value_error_method_failed;
     }
     bool ret  = setOption(RS2_OPTION_MIN_DISTANCE, m_depth_sensor, nearPlane);
     ret      &= setOption(RS2_OPTION_MAX_DISTANCE, m_depth_sensor, farPlane);
-    return ret;
+    if (ret) {return ReturnValue_ok;}
+    return ReturnValue::return_code::return_value_error_method_failed;
 }
 
-bool realsense2Driver::getDepthMirroring(bool& mirror)
+ReturnValue realsense2Driver::getDepthMirroring(bool& mirror)
 {
     yCWarning(REALSENSE2) << "Mirroring not supported";
-    return false;
+    return ReturnValue::return_code::return_value_error_not_implemented_by_device;
 }
 
-bool realsense2Driver::setDepthMirroring(bool mirror)
+ReturnValue realsense2Driver::setDepthMirroring(bool mirror)
 {
     yCWarning(REALSENSE2) << "Mirroring not supported";
-    return false;
+    return ReturnValue::return_code::return_value_error_not_implemented_by_device;
 }
 
-bool realsense2Driver::getExtrinsicParam(Matrix& extrinsic)
+ReturnValue realsense2Driver::getExtrinsicParam(Matrix& extrinsic)
 {
-    return setExtrinsicParam(extrinsic, m_depth_to_color);
+    bool b= setExtrinsicParam(extrinsic, m_depth_to_color);
+    if (b) {return ReturnValue_ok;}
+    return ReturnValue::return_code::return_value_error_method_failed;
 }
 
-bool realsense2Driver::getRgbImage(FlexImage& rgbImage, Stamp* timeStamp)
+ReturnValue realsense2Driver::getRgbImage(FlexImage& rgbImage, Stamp* timeStamp)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
     rs2::frameset data;
@@ -1071,17 +1090,19 @@ bool realsense2Driver::getRgbImage(FlexImage& rgbImage, Stamp* timeStamp)
     {
         yCError(REALSENSE2) << "m_pipeline.wait_for_frames() failed with error:"<< "(" << e.what() << ")";
          m_lastError = e.what();
-        return false;
+        return ReturnValue::return_code::return_value_error_method_failed;
     }
     if (m_alignment_stream == RS2_STREAM_DEPTH)
     {
         rs2::align align(m_alignment_stream);
         data = align.process(data);
     }
-    return getImage(rgbImage, timeStamp, data);
+    bool b= getImage_priv(rgbImage, timeStamp, data);
+    if (b) ReturnValue_ok;
+    return ReturnValue::return_code::return_value_error_method_failed;
 }
 
-bool realsense2Driver::getDepthImage(ImageOf<PixelFloat>& depthImage, Stamp* timeStamp)
+ReturnValue realsense2Driver::getDepthImage(ImageOf<PixelFloat>& depthImage, Stamp* timeStamp)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
     rs2::frameset data;
@@ -1093,17 +1114,19 @@ bool realsense2Driver::getDepthImage(ImageOf<PixelFloat>& depthImage, Stamp* tim
     {
         yCError(REALSENSE2) << "m_pipeline.wait_for_frames() failed with error:"<< "(" << e.what() << ")";
         m_lastError = e.what();
-        return false;
+        return ReturnValue::return_code::return_value_error_method_failed;
     }
     if (m_alignment_stream == RS2_STREAM_COLOR)
     {
         rs2::align align(m_alignment_stream);
         data = align.process(data);
     }
-    return getImage(depthImage, timeStamp, data);
+    bool b= getImage_priv(depthImage, timeStamp, data);
+    if (b) ReturnValue_ok;
+    return ReturnValue::return_code::return_value_error_method_failed;
 }
 
-bool realsense2Driver::getImage(FlexImage& Frame, Stamp *timeStamp, rs2::frameset &sourceFrame)
+bool realsense2Driver::getImage_priv(FlexImage& Frame, Stamp *timeStamp, rs2::frameset &sourceFrame)
 {
     rs2::video_frame color_frm = sourceFrame.get_color_frame();
     rs2_format format = color_frm.get_profile().format();
@@ -1143,7 +1166,7 @@ bool realsense2Driver::getImage(FlexImage& Frame, Stamp *timeStamp, rs2::framese
     return true;
 }
 
-bool realsense2Driver::getImage(depthImage& Frame, Stamp *timeStamp, const rs2::frameset &sourceFrame)
+bool realsense2Driver::getImage_priv(depthImage& Frame, Stamp *timeStamp, const rs2::frameset &sourceFrame)
 {
     rs2::depth_frame depth_frm = sourceFrame.get_depth_frame();
     rs2_format format = depth_frm.get_profile().format();
@@ -1189,7 +1212,7 @@ bool realsense2Driver::getImage(depthImage& Frame, Stamp *timeStamp, const rs2::
     return true;
 }
 
-bool realsense2Driver::getImages(FlexImage& colorFrame, ImageOf<PixelFloat>& depthFrame, Stamp* colorStamp, Stamp* depthStamp)
+ReturnValue realsense2Driver::getImages(FlexImage& colorFrame, ImageOf<PixelFloat>& depthFrame, Stamp* colorStamp, Stamp* depthStamp)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
     rs2::frameset data;
@@ -1201,54 +1224,52 @@ bool realsense2Driver::getImages(FlexImage& colorFrame, ImageOf<PixelFloat>& dep
     {
         yCError(REALSENSE2) << "m_pipeline.wait_for_frames() failed with error:"<< "(" << e.what() << ")";
         m_lastError = e.what();
-        return false;
+        return ReturnValue::return_code::return_value_error_method_failed;
     }
     if (m_alignment_stream != RS2_STREAM_ANY) // RS2_STREAM_ANY is used as no-alignment-needed value.
     {
         rs2::align align(m_alignment_stream);
         data = align.process(data);
     }
-    return getImage(colorFrame, colorStamp, data) && getImage(depthFrame, depthStamp, data);
+    bool b =  getImage_priv(colorFrame, colorStamp, data) && getImage_priv(depthFrame, depthStamp, data);
+    if (b) ReturnValue_ok;
+    return ReturnValue::return_code::return_value_error_method_failed;
 }
 
-IRGBDSensor::RGBDSensor_status realsense2Driver::getSensorStatus()
+ReturnValue realsense2Driver::getSensorStatus(IRGBDSensor::RGBDSensor_status& status)
 {
-    return RGBD_SENSOR_OK_IN_USE;
+    status = RGBD_SENSOR_OK_IN_USE;
+    return ReturnValue_ok;
 }
 
-std::string realsense2Driver::getLastErrorMsg(Stamp* timeStamp)
+ReturnValue realsense2Driver::getLastErrorMsg(std::string& message, Stamp* timeStamp)
 {
-    return m_lastError;
+    message = m_lastError;
+    return ReturnValue_ok;
 }
 
-bool realsense2Driver::getCameraDescription(CameraDescriptor* camera)
+ReturnValue realsense2Driver::getCameraDescription(CameraDescriptor& camera)
 {
-    camera->deviceDescription = get_device_information(m_device);
-    camera->busType = BUS_USB;
-    return true;
+    camera.deviceDescription = get_device_information(m_device);
+    camera.busType = BusType::BUS_USB;
+    return ReturnValue_ok;
 }
 
-bool realsense2Driver::hasFeature(int feature, bool* hasFeature)
+ReturnValue realsense2Driver::hasFeature(cameraFeature_id_t feature, bool& hasFeature)
 {
-    cameraFeature_id_t f;
-    f = static_cast<cameraFeature_id_t>(feature);
-    if (f < YARP_FEATURE_BRIGHTNESS || f > YARP_FEATURE_NUMBER_OF-1)
-    {
-        return false;
-    }
-
-    *hasFeature = std::find(m_supportedFeatures.begin(), m_supportedFeatures.end(), f) != m_supportedFeatures.end();
-
-    return true;
+    cameraFeature_id_t f = feature;
+    hasFeature = std::find(m_supportedFeatures.begin(), m_supportedFeatures.end(), f) != m_supportedFeatures.end();
+    return ReturnValue_ok;
 }
 
-bool realsense2Driver::setFeature(int feature, double value)
+ReturnValue realsense2Driver::setFeature(cameraFeature_id_t feature, double value)
 {
     bool b = false;
-    if (!hasFeature(feature, &b) || !b)
+    bool ok = hasFeature(feature, b);
+    if (!ok || !b)
     {
         yCError(REALSENSE2) << "Feature not supported!";
-        return false;
+        return ReturnValue::return_code::return_value_error_method_failed;
     }
 
     float valToSet = 0.0;
@@ -1256,7 +1277,7 @@ bool realsense2Driver::setFeature(int feature, double value)
     auto f = static_cast<cameraFeature_id_t>(feature);
     switch(f)
     {
-    case YARP_FEATURE_EXPOSURE:
+    case cameraFeature_id_t::YARP_FEATURE_EXPOSURE:
         if(optionPerc2Value(RS2_OPTION_EXPOSURE, m_color_sensor, value, valToSet))
         {
             b = setOption(RS2_OPTION_EXPOSURE, m_color_sensor, valToSet);
@@ -1269,7 +1290,7 @@ bool realsense2Driver::setFeature(int feature, double value)
             }
         }
         break;
-    case YARP_FEATURE_GAIN:
+    case cameraFeature_id_t::YARP_FEATURE_GAIN:
         if(optionPerc2Value(RS2_OPTION_GAIN, m_color_sensor,value, valToSet))
         {
             b = setOption(RS2_OPTION_GAIN, m_color_sensor, valToSet);
@@ -1282,30 +1303,30 @@ bool realsense2Driver::setFeature(int feature, double value)
             }
         }
         break;
-    case YARP_FEATURE_FRAME_RATE:
+    case cameraFeature_id_t::YARP_FEATURE_FRAME_RATE:
     {
         b = setFramerate((int) value);
         break;
     }
-    case YARP_FEATURE_WHITE_BALANCE:
+    case cameraFeature_id_t::YARP_FEATURE_WHITE_BALANCE:
         if(optionPerc2Value(RS2_OPTION_WHITE_BALANCE, m_color_sensor, value, valToSet))
             b = setOption(RS2_OPTION_WHITE_BALANCE, m_color_sensor, valToSet);
         break;
-    case YARP_FEATURE_SHARPNESS:
+    case cameraFeature_id_t::YARP_FEATURE_SHARPNESS:
         if(optionPerc2Value(RS2_OPTION_SHARPNESS, m_color_sensor, value, valToSet))
             b = setOption(RS2_OPTION_SHARPNESS, m_color_sensor, valToSet);
         break;
-    case YARP_FEATURE_HUE:
+    case cameraFeature_id_t::YARP_FEATURE_HUE:
         if(optionPerc2Value(RS2_OPTION_HUE, m_color_sensor, value, valToSet))
             b = setOption(RS2_OPTION_HUE, m_color_sensor, valToSet);
         break;
-    case YARP_FEATURE_SATURATION:
+    case cameraFeature_id_t::YARP_FEATURE_SATURATION:
         if(optionPerc2Value(RS2_OPTION_SATURATION, m_color_sensor, value, valToSet))
             b = setOption(RS2_OPTION_SATURATION, m_color_sensor, valToSet);
         break;
     default:
         yCError(REALSENSE2) << "Feature not supported!";
-        return false;
+        return ReturnValue::return_code::return_value_error_method_failed;
     }
     if (!b)
     {
@@ -1314,18 +1335,19 @@ bool realsense2Driver::setFeature(int feature, double value)
         {
             print_supported_options(*m_color_sensor);
         }
-        return false;
+        return ReturnValue::return_code::return_value_error_method_failed;
     }
-    return true;
+    return ReturnValue_ok;
 }
 
-bool realsense2Driver::getFeature(int feature, double *value)
+ReturnValue realsense2Driver::getFeature(cameraFeature_id_t feature, double& value)
 {
     bool b = false;
-    if (!hasFeature(feature, &b) || !b)
+    bool ok = hasFeature(feature, b);
+    if (!ok || !b)
     {
         yCError(REALSENSE2) << "Feature not supported!";
-        return false;
+        return ReturnValue::return_code::return_value_error_method_failed;
     }
 
     float valToGet = 0.0;
@@ -1334,39 +1356,39 @@ bool realsense2Driver::getFeature(int feature, double *value)
     auto f = static_cast<cameraFeature_id_t>(feature);
     switch(f)
     {
-    case YARP_FEATURE_EXPOSURE:
+    case cameraFeature_id_t::YARP_FEATURE_EXPOSURE:
         if (getOption(RS2_OPTION_EXPOSURE, m_color_sensor, valToGet))
             b = optionValue2Perc(RS2_OPTION_EXPOSURE, m_color_sensor, (float&) value, valToGet);
         break;
-    case YARP_FEATURE_GAIN:
+    case cameraFeature_id_t::YARP_FEATURE_GAIN:
         if (getOption(RS2_OPTION_GAIN, m_color_sensor, valToGet))
             b = optionValue2Perc(RS2_OPTION_GAIN, m_color_sensor, (float&) value, valToGet);
         break;
-    case YARP_FEATURE_FRAME_RATE:
+    case cameraFeature_id_t::YARP_FEATURE_FRAME_RATE:
     {
         b = true;
-        *value = (double) m_fps;
+        value = (double) m_fps;
         break;
     }
-    case YARP_FEATURE_WHITE_BALANCE:
+    case cameraFeature_id_t::YARP_FEATURE_WHITE_BALANCE:
         if (getOption(RS2_OPTION_WHITE_BALANCE, m_color_sensor, valToGet))
             b = optionValue2Perc(RS2_OPTION_WHITE_BALANCE, m_color_sensor, (float&) value, valToGet);
         break;
-    case YARP_FEATURE_SHARPNESS:
+    case cameraFeature_id_t::YARP_FEATURE_SHARPNESS:
         if (getOption(RS2_OPTION_SHARPNESS, m_color_sensor, valToGet))
             b = optionValue2Perc(RS2_OPTION_SHARPNESS, m_color_sensor, (float&) value, valToGet);
         break;
-    case YARP_FEATURE_HUE:
+    case cameraFeature_id_t::YARP_FEATURE_HUE:
         if (getOption(RS2_OPTION_HUE, m_color_sensor, valToGet))
             b = optionValue2Perc(RS2_OPTION_HUE, m_color_sensor, (float&) value, valToGet);
         break;
-    case YARP_FEATURE_SATURATION:
+    case cameraFeature_id_t::YARP_FEATURE_SATURATION:
         if (getOption(RS2_OPTION_SATURATION, m_color_sensor, valToGet))
             b = optionValue2Perc(RS2_OPTION_SATURATION, m_color_sensor, (float&) value, valToGet);
         break;
     default:
         yCError(REALSENSE2) << "Feature not supported!";
-        return false;
+        return ReturnValue::return_code::return_value_error_method_failed;
     }
     if (!b)
     {
@@ -1375,267 +1397,299 @@ bool realsense2Driver::getFeature(int feature, double *value)
         {
             print_supported_options(*m_color_sensor);
         }
-        return false;
+        return ReturnValue::return_code::return_value_error_method_failed;
     }
-    return true;
+    return ReturnValue_ok;
 }
 
-bool realsense2Driver::setFeature(int feature, double value1, double value2)
+ReturnValue realsense2Driver::setFeature(cameraFeature_id_t feature, double value1, double value2)
 {
     yCError(REALSENSE2) << "No 2-valued feature are supported";
-    return false;
+    return ReturnValue::return_code::return_value_error_not_implemented_by_device;
 }
 
-bool realsense2Driver::getFeature(int feature, double *value1, double *value2)
+ReturnValue realsense2Driver::getFeature(cameraFeature_id_t feature, double &value1, double &value2)
 {
     yCError(REALSENSE2) << "No 2-valued feature are supported";
-    return false;
+    return ReturnValue::return_code::return_value_error_not_implemented_by_device;
 }
 
-bool realsense2Driver::hasOnOff(  int feature, bool *HasOnOff)
+ReturnValue realsense2Driver::hasOnOff(  cameraFeature_id_t feature, bool &HasOnOff)
 {
-    bool b;
-    if (!hasFeature(feature, &b) || !b)
+    bool b = false;
+    bool ok = hasFeature(feature, b);
+    if (!ok || !b)
     {
         yCError(REALSENSE2) << "Feature not supported!";
-        return false;
+        return ReturnValue::return_code::return_value_error_method_failed;
     }
 
     auto f = static_cast<cameraFeature_id_t>(feature);
-    if (f == YARP_FEATURE_WHITE_BALANCE || f == YARP_FEATURE_MIRROR || f == YARP_FEATURE_EXPOSURE)
+    if (f == cameraFeature_id_t::YARP_FEATURE_WHITE_BALANCE || f == cameraFeature_id_t::YARP_FEATURE_MIRROR || f == cameraFeature_id_t::YARP_FEATURE_EXPOSURE)
     {
-        *HasOnOff = true;
-        return true;
+        HasOnOff = true;
+        return ReturnValue_ok;
     }
-    *HasOnOff = false;
-    return true;
+    HasOnOff = false;
+    return ReturnValue_ok;
 }
 
-bool realsense2Driver::setActive( int feature, bool onoff)
+ReturnValue realsense2Driver::setActive( cameraFeature_id_t feature, bool onoff)
 {
-    bool b;
-    if (!hasFeature(feature, &b) || !b)
+    bool b = false;
+    bool ok = hasFeature(feature, b);
+    if (!ok || !b)
     {
         yCError(REALSENSE2) << "Feature not supported!";
-        return false;
+        return ReturnValue::return_code::return_value_error_method_failed;
     }
 
-    if (!hasOnOff(feature, &b) || !b)
+    b = false;
+    ok = hasOnOff(feature, b);
+    if (!ok || !b)
     {
         yCError(REALSENSE2) << "Feature does not have OnOff.. call hasOnOff() to know if a specific feature support OnOff mode";
-        return false;
+        return ReturnValue::return_code::return_value_error_method_failed;
     }
 
+    bool ret =true;
     switch(feature)
     {
-    case YARP_FEATURE_WHITE_BALANCE:
-        b = setOption(RS2_OPTION_ENABLE_AUTO_WHITE_BALANCE, m_color_sensor, (float) onoff);
-        return b;
-    case YARP_FEATURE_EXPOSURE:
-        b = setOption(RS2_OPTION_ENABLE_AUTO_EXPOSURE, m_color_sensor, (float) onoff);
-        return b;
+    case cameraFeature_id_t::YARP_FEATURE_WHITE_BALANCE:
+        ret = setOption(RS2_OPTION_ENABLE_AUTO_WHITE_BALANCE, m_color_sensor, (float) onoff);
+        break;
+    case cameraFeature_id_t::YARP_FEATURE_EXPOSURE:
+        ret = setOption(RS2_OPTION_ENABLE_AUTO_EXPOSURE, m_color_sensor, (float) onoff);
+        break;
     default:
-        return false;
+        return ReturnValue::return_code::return_value_error_method_failed;
+        break;
     }
 
-    return true;
+    if (ret) {return ReturnValue_ok;}
+    return ReturnValue::return_code::return_value_error_method_failed;
 }
 
-bool realsense2Driver::getActive( int feature, bool *isActive)
+ReturnValue realsense2Driver::getActive( cameraFeature_id_t feature, bool &isActive)
 {
-    bool b;
-    if (!hasFeature(feature, &b) || !b)
+    bool b = false;
+    bool ok = hasFeature(feature, b);
+    if (!ok || !b)
     {
         yCError(REALSENSE2) << "Feature not supported!";
-        return false;
+        return ReturnValue::return_code::return_value_error_method_failed;
     }
 
-    if (!hasOnOff(feature, &b) || !b)
+    b = false;
+    ok = hasOnOff(feature, b);
+    if (!ok || !b)
     {
         yCError(REALSENSE2) << "Feature does not have OnOff.. call hasOnOff() to know if a specific feature support OnOff mode";
-        return false;
+        return ReturnValue::return_code::return_value_error_method_failed;
     }
     float response = 0.0;
     switch(feature)
     {
-    case YARP_FEATURE_WHITE_BALANCE:
+    case cameraFeature_id_t::YARP_FEATURE_WHITE_BALANCE:
         b = getOption(RS2_OPTION_ENABLE_AUTO_WHITE_BALANCE, m_color_sensor, response); //TODO check if this exotic conversion works
-        *isActive = (bool) response;
-        return b;
-    case YARP_FEATURE_EXPOSURE:
+        isActive = (bool) response;
+    break;
+    case cameraFeature_id_t::YARP_FEATURE_EXPOSURE:
         b = getOption(RS2_OPTION_ENABLE_AUTO_EXPOSURE, m_color_sensor, response); //TODO check if this exotic conversion works
-        *isActive = (bool) response;
-        return b;
+        isActive = (bool) response;
+    break;
     default:
-        return false;
+        return ReturnValue::return_code::return_value_error_method_failed;
+    break;
     }
 
-    return true;
+    if (b) {return ReturnValue_ok;}
+    return ReturnValue::return_code::return_value_error_method_failed;
 }
 
-bool realsense2Driver::hasAuto(int feature, bool *hasAuto)
+ReturnValue realsense2Driver::hasAuto(cameraFeature_id_t feature, bool &hasAuto)
 {
-    bool b;
-    if (!hasFeature(feature, &b) || !b)
+    bool b = false;
+    bool ok = hasFeature(feature, b);
+    if (!ok || !b)
     {
         yCError(REALSENSE2) << "Feature not supported!";
-        return false;
+        return ReturnValue::return_code::return_value_error_method_failed;
     }
 
     auto f = static_cast<cameraFeature_id_t>(feature);
-    if (f == YARP_FEATURE_EXPOSURE || f == YARP_FEATURE_WHITE_BALANCE)
+    if (f == cameraFeature_id_t::YARP_FEATURE_EXPOSURE || f == cameraFeature_id_t::YARP_FEATURE_WHITE_BALANCE)
     {
-        *hasAuto = true;
-        return true;
+        hasAuto = true;
+        return ReturnValue_ok;
     }
-    *hasAuto = false;
-    return true;
+    hasAuto = false;
+    return ReturnValue_ok;
 }
 
-bool realsense2Driver::hasManual( int feature, bool* hasManual)
+ReturnValue realsense2Driver::hasManual( cameraFeature_id_t feature, bool& hasManual)
 {
-    bool b;
-    if (!hasFeature(feature, &b) || !b)
+    bool b = false;
+    bool ok = hasFeature(feature, b);
+    if (!ok || !b)
     {
         yCError(REALSENSE2) << "Feature not supported!";
-        return false;
+        return ReturnValue::return_code::return_value_error_method_failed;
     }
 
     auto f = static_cast<cameraFeature_id_t>(feature);
-    if (f == YARP_FEATURE_EXPOSURE || f == YARP_FEATURE_FRAME_RATE || f == YARP_FEATURE_GAIN ||
-        f == YARP_FEATURE_HUE || f == YARP_FEATURE_SATURATION || f == YARP_FEATURE_SHARPNESS)
+    if (f == cameraFeature_id_t::YARP_FEATURE_EXPOSURE || f == cameraFeature_id_t::YARP_FEATURE_FRAME_RATE || f == cameraFeature_id_t::YARP_FEATURE_GAIN ||
+        f == cameraFeature_id_t::YARP_FEATURE_HUE || f == cameraFeature_id_t::YARP_FEATURE_SATURATION || f == cameraFeature_id_t::YARP_FEATURE_SHARPNESS)
     {
-        *hasManual = true;
-        return true;
+        hasManual = true;
+        return ReturnValue_ok;
     }
-    *hasManual = false;
-    return true;
+    hasManual = false;
+    return ReturnValue_ok;
 }
 
-bool realsense2Driver::hasOnePush(int feature, bool* hasOnePush)
+ReturnValue realsense2Driver::hasOnePush(cameraFeature_id_t feature, bool& hasOnePush)
 {
-    bool b;
-    if (!hasFeature(feature, &b) || !b)
+    bool b = false;
+    bool ok = hasFeature(feature, b);
+    if (!ok || !b)
     {
         yCError(REALSENSE2) << "Feature not supported!";
-        return false;
+        return ReturnValue::return_code::return_value_error_method_failed;
     }
 
     return hasAuto(feature, hasOnePush);
 }
 
-bool realsense2Driver::setMode(int feature, FeatureMode mode)
+ReturnValue realsense2Driver::setMode(cameraFeature_id_t feature, FeatureMode mode)
 {
-    bool b;
-    if (!hasFeature(feature, &b) || !b)
+    bool b = false;
+    bool ok = hasFeature(feature, b);
+    if (!ok || !b)
     {
         yCError(REALSENSE2) << "Feature not supported!";
-        return false;
+        return ReturnValue::return_code::return_value_error_method_failed;
     }
     float one = 1.0;
     float zero = 0.0;
 
     auto f = static_cast<cameraFeature_id_t>(feature);
-    if (f == YARP_FEATURE_WHITE_BALANCE)
+    if (f == cameraFeature_id_t::YARP_FEATURE_WHITE_BALANCE)
     {
+        bool b=false;
         switch(mode)
         {
-        case MODE_AUTO:
-            return setOption(RS2_OPTION_ENABLE_AUTO_WHITE_BALANCE, m_color_sensor, one);
-        case MODE_MANUAL:
-            return setOption(RS2_OPTION_ENABLE_AUTO_WHITE_BALANCE, m_color_sensor, zero);
-        case MODE_UNKNOWN:
-            return false;
+        case FeatureMode::MODE_AUTO:
+            b = setOption(RS2_OPTION_ENABLE_AUTO_WHITE_BALANCE, m_color_sensor, one);
+            break;
+        case FeatureMode::MODE_MANUAL:
+            b = setOption(RS2_OPTION_ENABLE_AUTO_WHITE_BALANCE, m_color_sensor, zero);
+            break;
+        case FeatureMode::MODE_UNKNOWN:
+            b = false;
+            break;
         default:
-            return false;
+            b = false;
+            break;
         }
-        return true;
+       if (b) {return ReturnValue_ok;}
+       return ReturnValue::return_code::return_value_error_method_failed;
     }
 
-    if (f == YARP_FEATURE_EXPOSURE)
+    if (f == cameraFeature_id_t::YARP_FEATURE_EXPOSURE)
     {
+        bool b=false;
         switch(mode)
         {
-        case MODE_AUTO:
-            return setOption(RS2_OPTION_ENABLE_AUTO_EXPOSURE, m_color_sensor, one);
-        case MODE_MANUAL:
-            return setOption(RS2_OPTION_ENABLE_AUTO_EXPOSURE, m_color_sensor, zero);
-        case MODE_UNKNOWN:
-            return false;
+        case FeatureMode::MODE_AUTO:
+            b= setOption(RS2_OPTION_ENABLE_AUTO_EXPOSURE, m_color_sensor, one);
+            break;
+        case FeatureMode::MODE_MANUAL:
+            b= setOption(RS2_OPTION_ENABLE_AUTO_EXPOSURE, m_color_sensor, zero);
+            break;
+        case FeatureMode::MODE_UNKNOWN:
+            b=  false;
+            break;
         default:
-            return false;
+            b = false;
+            break;
         }
-        return true;
+       if (b) {return ReturnValue_ok;}
+       return ReturnValue::return_code::return_value_error_method_failed;
     }
 
 
     yCError(REALSENSE2) << "Feature does not have both auto and manual mode";
-    return false;
+    return ReturnValue::return_code::return_value_error_method_failed;
 }
 
-bool realsense2Driver::getMode(int feature, FeatureMode* mode)
+ReturnValue realsense2Driver::getMode(cameraFeature_id_t feature, FeatureMode& mode)
 {
-    bool b;
-    if (!hasFeature(feature, &b) || !b)
+    bool b = false;
+    bool ok = hasFeature(feature, b);
+    if (!ok || !b)
     {
         yCError(REALSENSE2) << "Feature not supported!";
-        return false;
-    }
+        return ReturnValue::return_code::return_value_error_method_failed;
+    } 
     float res = 0.0;
     bool ret = true;
     auto f = static_cast<cameraFeature_id_t>(feature);
-    if (f == YARP_FEATURE_WHITE_BALANCE)
+    if (f == cameraFeature_id_t::YARP_FEATURE_WHITE_BALANCE)
     {
         ret &= getOption(RS2_OPTION_ENABLE_AUTO_WHITE_BALANCE, m_color_sensor, res);
     }
 
-    if (f == YARP_FEATURE_EXPOSURE)
+    if (f == cameraFeature_id_t::YARP_FEATURE_EXPOSURE)
     {
         ret &= getOption(RS2_OPTION_ENABLE_AUTO_EXPOSURE, m_color_sensor, res);
     }
 
     if (res == 0.0)
     {
-        *mode = MODE_MANUAL;
+        mode = FeatureMode::MODE_MANUAL;
     }
     else if (res == 1.0)
     {
-        *mode = MODE_AUTO;
+        mode = FeatureMode::MODE_AUTO;
     }
     else
     {
-        *mode = MODE_UNKNOWN;
+        mode = FeatureMode::MODE_UNKNOWN;
     }
-    return ret;
+    if (ret) ReturnValue_ok;
+    return ReturnValue::return_code::return_value_error_method_failed;
 }
 
-bool realsense2Driver::setOnePush(int feature)
+ReturnValue realsense2Driver::setOnePush(cameraFeature_id_t feature)
 {
-    bool b;
-    if (!hasFeature(feature, &b) || !b)
+    bool b = false;
+    bool ok = hasFeature(feature, b);
+    if (!ok || !b)
     {
         yCError(REALSENSE2) << "Feature not supported!";
-        return false;
+        return ReturnValue::return_code::return_value_error_method_failed;
     }
-
-    if (!hasOnePush(feature, &b) || !b)
+    b = false;
+    ok = hasOnePush(feature, b);
+    if (!ok || !b)
     {
         yCError(REALSENSE2) << "Feature doesn't have OnePush";
-        return false;
+        return ReturnValue::return_code::return_value_error_method_failed;
     }
 
-    setMode(feature, MODE_AUTO);
-    setMode(feature, MODE_MANUAL);
+    setMode(feature, FeatureMode::MODE_AUTO);
+    setMode(feature, FeatureMode::MODE_MANUAL);
 
-    return true;
+    return ReturnValue_ok;
 }
 
-bool realsense2Driver::getImage(yarp::sig::ImageOf<yarp::sig::PixelMono>& image)
+ReturnValue realsense2Driver::getImage(yarp::sig::ImageOf<yarp::sig::PixelMono>& image)
 {
     if (!m_stereoMode)
     {
         yCError(REALSENSE2)<<"Infrared stereo stream not enabled";
-        return false;
+        return ReturnValue::return_code::return_value_error_method_failed;
     }
 
     image.resize(width(), height());
@@ -1649,7 +1703,7 @@ bool realsense2Driver::getImage(yarp::sig::ImageOf<yarp::sig::PixelMono>& image)
     {
         yCError(REALSENSE2) << "m_pipeline.wait_for_frames() failed with error:"<< "(" << e.what() << ")";
         m_lastError = e.what();
-        return false;
+        return ReturnValue::return_code::return_value_error_method_failed;
     }
 
     rs2::video_frame frm1 = data.get_infrared_frame(1);
@@ -1660,14 +1714,16 @@ bool realsense2Driver::getImage(yarp::sig::ImageOf<yarp::sig::PixelMono>& image)
     if (pixCode != VOCAB_PIXEL_MONO)
     {
         yCError(REALSENSE2) << "Expecting Pixel Format MONO";
-        return false;
+        return ReturnValue::return_code::return_value_error_method_failed;
     }
 
     // Wrap rs images with yarp ones.
     ImageOf<PixelMono> imgL, imgR;
     imgL.setExternal((unsigned char*) (frm1.get_data()), frm1.get_width(), frm1.get_height());
     imgR.setExternal((unsigned char*) (frm2.get_data()), frm2.get_width(), frm2.get_height());
-    return utils::horzConcat(imgL, imgR, image);
+    bool ret=  utils::horzConcat(imgL, imgR, image);
+    if (ret) ReturnValue_ok;
+    return ReturnValue::return_code::return_value_error_method_failed;
 }
 
 int  realsense2Driver::height() const
