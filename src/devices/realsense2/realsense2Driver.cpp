@@ -830,6 +830,21 @@ bool realsense2Driver::open(Searchable& config)
             yCInfo(REALSENSE2) << "parameter rotateImage180 enabled, the image is rotated";
         }
     }
+    // Manage depth hole-filling filter parameters
+    if (config.check("DEPTH_FILTER")) {
+        yarp::os::Property filterCfg;
+        filterCfg.fromString(config.findGroup("DEPTH_FILTER").toString());
+        if (filterCfg.check("enableHoleFilling") && filterCfg.find("enableHoleFilling").asBool()) {
+            m_enableHoleFilling = true;
+            int mode = 1; // default: farest_from_around
+            if (filterCfg.check("holeFillingMode")) {
+                mode = filterCfg.find("holeFillingMode").asInt32();
+            }
+            m_holeFillingFilter.set_option(RS2_OPTION_HOLES_FILL, static_cast<float>(mode));
+            yCInfo(REALSENSE2) << "Depth hole-filling filter enabled with mode" << mode;
+        }
+    }
+
     m_verbose = config.check("verbose");
     if (config.check("stereoMode")) {
         m_stereoMode = config.find("stereoMode").asBool();
@@ -1100,6 +1115,10 @@ bool realsense2Driver::getDepthImage(ImageOf<PixelFloat>& depthImage, Stamp* tim
         rs2::align align(m_alignment_stream);
         data = align.process(data);
     }
+    if (m_enableHoleFilling)
+    {
+        data = data.apply_filter(m_holeFillingFilter);
+    }
     return getImage(depthImage, timeStamp, data);
 }
 
@@ -1207,6 +1226,10 @@ bool realsense2Driver::getImages(FlexImage& colorFrame, ImageOf<PixelFloat>& dep
     {
         rs2::align align(m_alignment_stream);
         data = align.process(data);
+    }
+    if (m_enableHoleFilling)
+    {
+        data = data.apply_filter(m_holeFillingFilter);
     }
     return getImage(colorFrame, colorStamp, data) && getImage(depthFrame, depthStamp, data);
 }
