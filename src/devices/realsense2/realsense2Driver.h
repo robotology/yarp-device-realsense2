@@ -148,6 +148,7 @@ protected:
     int m_fps;
     float m_scale;
     bool m_rotateImage180{false};
+    std::string m_serialnumber;
     std::vector<cameraFeature_id_t> m_supportedFeatures;
 };
 #endif

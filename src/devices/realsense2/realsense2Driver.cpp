@@ -545,9 +545,20 @@ bool realsense2Driver::initializeRealsenseDevice()
         yCInfo(REALSENSE2) << "Device: " << name << " | Serial: " << serial;
     }
     
-    //Using the device_hub we can block the program until a device connects
-    rs2::device_hub device_hub(m_ctx);
-    m_device = device_hub.wait_for_device();
+    if (m_serialnumber!="")
+    {
+        //Enable only the selected device
+        m_cfg.enable_device(m_serialnumber);
+    }
+    else
+    {
+        //No serialnumber chosen, just get the first available device.
+        //Using the device_hub we can block the program until a device connects
+        rs2::device_hub device_hub(m_ctx);
+        yCInfo(REALSENSE2) << "Waiting for device to become avilable...";
+        m_device = device_hub.wait_for_device();
+        yCInfo(REALSENSE2) << "...device ready";
+    }
 
     // Get the camera name as the D405 is to be handled differently from the other cameras
     const std::string camera_name = std::string(m_device.get_info(RS2_CAMERA_INFO_NAME));
@@ -599,7 +610,6 @@ bool realsense2Driver::initializeRealsenseDevice()
         return false;
     m_initialized = true;
 
-    //TODO: if more are connected?!
     // Update the selected device
     m_device = m_profile.get_device();
     if (m_verbose)
@@ -839,7 +849,14 @@ bool realsense2Driver::open(Searchable& config)
             yCInfo(REALSENSE2) << "parameter rotateImage180 enabled, the image is rotated";
         }
     }
+
     m_verbose = config.check("verbose");
+    
+    if (config.check("serialnumber")) {
+        m_serialnumber = config.find("serialnumber").asString();
+        yCInfo(REALSENSE2) << "Desired device serialnumber:" << m_serialnumber;
+    }
+
     if (config.check("stereoMode")) {
         m_stereoMode = config.find("stereoMode").asBool();
     }
