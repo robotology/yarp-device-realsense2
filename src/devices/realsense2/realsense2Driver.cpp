@@ -529,13 +529,22 @@ void realsense2Driver::fallback()
 
 bool realsense2Driver::initializeRealsenseDevice()
 {
-    // Check if there are connected cameras
-    if (m_ctx.query_devices().size() == 0)
+    // Print available devices
+    auto devices = m_ctx.query_devices();
+    if (devices.size() == 0)
     {
         yCError(REALSENSE2) << "No device connected, please connect a RealSense device";
         return false;
     }
 
+    yCInfo(REALSENSE2) << "Found the following devices:";    
+    for (auto&& dev : devices)
+    {
+        std::string serial = dev.get_info(RS2_CAMERA_INFO_SERIAL_NUMBER);
+        std::string name   = dev.get_info(RS2_CAMERA_INFO_NAME);
+        yCInfo(REALSENSE2) << "Device: " << name << " | Serial: " << serial;
+    }
+    
     //Using the device_hub we can block the program until a device connects
     rs2::device_hub device_hub(m_ctx);
     m_device = device_hub.wait_for_device();
