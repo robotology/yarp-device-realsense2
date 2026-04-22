@@ -537,12 +537,19 @@ bool realsense2Driver::initializeRealsenseDevice()
         return false;
     }
 
+    std::string selectedcamera_type;
+    
+    //Check serialnumbers
     yCInfo(REALSENSE2) << "Found the following " << devices.size() << " devices:";    
     for (auto&& dev : devices)
     {
         std::string serial = dev.get_info(RS2_CAMERA_INFO_SERIAL_NUMBER);
         std::string name   = dev.get_info(RS2_CAMERA_INFO_NAME);
         yCInfo(REALSENSE2) << "Device: " << name << " | Serial: " << serial;
+        if (m_serialnumber == serial)
+        {
+           selectedcamera_type = name;
+        }
     }
     
     if (m_serialnumber!="")
@@ -558,12 +565,14 @@ bool realsense2Driver::initializeRealsenseDevice()
         yCInfo(REALSENSE2) << "Waiting for device to become avilable...";
         m_device = device_hub.wait_for_device();
         yCInfo(REALSENSE2) << "...device ready";
+        
+        // Get the type of the chosen camera
+        selectedcamera_type= std::string(m_device.get_info(RS2_CAMERA_INFO_NAME));
     }
 
-    // Get the camera name as the D405 is to be handled differently from the other cameras
-    const std::string camera_name = std::string(m_device.get_info(RS2_CAMERA_INFO_NAME));
-    const bool is_d405 = (camera_name.find("D405") != std::string::npos);
-
+    //If it is a D405, set the flag. D405 cameras are handled differently
+    bool is_d405 = (selectedcamera_type.find("D405") != std::string::npos);
+        
     // Extract RGB and depth resolution
     double colorW;
     double colorH;
