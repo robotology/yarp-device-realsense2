@@ -537,7 +537,7 @@ bool realsense2Driver::initializeRealsenseDevice()
         return false;
     }
 
-    yCInfo(REALSENSE2) << "Found the following devices:";    
+    yCInfo(REALSENSE2) << "Found the following " << devices.size() << " devices:";    
     for (auto&& dev : devices)
     {
         std::string serial = dev.get_info(RS2_CAMERA_INFO_SERIAL_NUMBER);
@@ -853,7 +853,7 @@ bool realsense2Driver::open(Searchable& config)
     m_verbose = config.check("verbose");
     
     if (config.check("serialnumber")) {
-        m_serialnumber = config.find("serialnumber").asString();
+        m_serialnumber = config.find("serialnumber").toString();
         yCInfo(REALSENSE2) << "Desired device serialnumber:" << m_serialnumber;
     }
 
