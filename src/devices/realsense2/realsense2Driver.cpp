@@ -529,21 +529,50 @@ void realsense2Driver::fallback()
 
 bool realsense2Driver::initializeRealsenseDevice()
 {
-    // Check if there are connected cameras
-    if (m_ctx.query_devices().size() == 0)
+    // Print available devices
+    auto devices = m_ctx.query_devices();
+    if (devices.size() == 0)
     {
         yCError(REALSENSE2) << "No device connected, please connect a RealSense device";
         return false;
     }
 
-    //Using the device_hub we can block the program until a device connects
-    rs2::device_hub device_hub(m_ctx);
-    m_device = device_hub.wait_for_device();
+    std::string selectedcamera_type;
+    
+    //Check serialnumbers
+    yCInfo(REALSENSE2) << "Found the following " << devices.size() << " devices:";    
+    for (auto&& dev : devices)
+    {
+        std::string serial = dev.get_info(RS2_CAMERA_INFO_SERIAL_NUMBER);
+        std::string name   = dev.get_info(RS2_CAMERA_INFO_NAME);
+        yCInfo(REALSENSE2) << "Device: " << name << " | Serial: " << serial;
+        if (m_serialnumber == serial)
+        {
+           selectedcamera_type = name;
+        }
+    }
+    
+    if (m_serialnumber!="")
+    {
+        //Enable only the selected device
+        m_cfg.enable_device(m_serialnumber);
+    }
+    else
+    {
+        //No serialnumber chosen, just get the first available device.
+        //Using the device_hub we can block the program until a device connects
+        rs2::device_hub device_hub(m_ctx);
+        yCInfo(REALSENSE2) << "Waiting for device to become avilable...";
+        m_device = device_hub.wait_for_device();
+        yCInfo(REALSENSE2) << "...device ready";
+        
+        // Get the type of the chosen camera
+        selectedcamera_type= std::string(m_device.get_info(RS2_CAMERA_INFO_NAME));
+    }
 
-    // Get the camera name as the D405 is to be handled differently from the other cameras
-    const std::string camera_name = std::string(m_device.get_info(RS2_CAMERA_INFO_NAME));
-    const bool is_d405 = (camera_name.find("D405") != std::string::npos);
-
+    //If it is a D405, set the flag. D405 cameras are handled differently
+    bool is_d405 = (selectedcamera_type.find("D405") != std::string::npos);
+        
     // Extract RGB and depth resolution
     double colorW;
     double colorH;
@@ -590,7 +619,6 @@ bool realsense2Driver::initializeRealsenseDevice()
         return false;
     m_initialized = true;
 
-    //TODO: if more are connected?!
     // Update the selected device
     m_device = m_profile.get_device();
     if (m_verbose)
@@ -830,6 +858,7 @@ bool realsense2Driver::open(Searchable& config)
             yCInfo(REALSENSE2) << "parameter rotateImage180 enabled, the image is rotated";
         }
     }
+
     // Manage depth hole-filling filter parameters
     if (config.check("DEPTH_FILTER")) {
         yarp::os::Property filterCfg;
@@ -846,6 +875,12 @@ bool realsense2Driver::open(Searchable& config)
     }
 
     m_verbose = config.check("verbose");
+    
+    if (config.check("serialnumber")) {
+        m_serialnumber = config.find("serialnumber").toString();
+        yCInfo(REALSENSE2) << "Desired device serialnumber:" << m_serialnumber;
+    }
+
     if (config.check("stereoMode")) {
         m_stereoMode = config.find("stereoMode").asBool();
     }
