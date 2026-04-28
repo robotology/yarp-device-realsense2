@@ -150,5 +150,9 @@ protected:
     bool m_rotateImage180{false};
     std::string m_serialnumber;
     std::vector<cameraFeature_id_t> m_supportedFeatures;
+
+    // Depth post-processing filters
+    bool m_enableHoleFilling{false};
+    rs2::hole_filling_filter m_holeFillingFilter;
 };
 #endif
