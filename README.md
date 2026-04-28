@@ -273,6 +273,13 @@ performed. Device will start with manufacturer default values.
 **Warning** whenever more then one value is required by the setting, the values
 must be in parentheses!
 
+### Depth hole-filling filter (`DEPTH_FILTER`)
+
+The `DEPTH_FILTER` group enables RealSense hole-filling post-processing for depth data.
+When `enableHoleFilling` is set to `true`, the filter is applied to depth frames returned by both `getDepthImage()` and `getImages()`.
+
+If `holeFillingMode` is not specified, the driver uses mode `1`.
+
 | YARP device name |
 |:----------------:|
 | `realsense2`     |
@@ -292,6 +299,9 @@ Parameters used by this device are:
 |                              | `enableEmitter`   | bool           | Read / Write | -       |   true        |  No             | Flag for enabling the IR emitter(if supported by the sensor)                          |                                                                       |
 |                              | `needAlignment`   | bool           | Read / Write | -       |   true        |  No             | Flag for enabling the alignment of the depth frame over the rgb frame                 |  This option is deprecated, please use alignmentFrame instead.        |
 |                              | `alignmentFrame`  | string         | Read / Write | -       |   RGB         |  No             | This parameter specifies the frame to which the frames RGB and Depth will be aligned. |  The accepted values are RGB, Depth, None. This operation could be heavy, set it to None to increase the fps.|
+|  `DEPTH_FILTER`              |     -             | group          | Read / write | -       |   -           |  No             | Optional depth post-processing filter settings.                                        |  Parameters in this group are parsed at startup.                      |
+|                              | `enableHoleFilling` | bool         | Read / write | -       |   false       |  No             | Enables the RealSense hole-filling post-processing filter on depth frames.            |  Applied in both `getDepthImage()` and `getImages()`.                |
+|                              | `holeFillingMode` | int            | Read / write | -       |   1           |  No             | Hole-filling mode value used by librealsense (`RS2_OPTION_HOLES_FILL`).               |  Typical values are 0 (fill_from_left), 1 (farest_from_around), 2 (nearest_from_around). |
 |  `HW_DESCRIPTION`            |     -             | group          |              | -       |   -           |  Yes            | Hardware description of device property.                                              |  Read only property. Setting will be disabled                         |
 |                              | `clipPlanes`      | double, double | Read / write | meters  |   -           |  No             | Minimum and maximum distance at which an object is seen by the depth sensor           |  parameter introduced mainly for simulated sensors, it can be used to set the clip planes if Openni gives wrong values |
 
@@ -309,6 +319,10 @@ rgbResolution   (640 480)
 framerate       30
 enableEmitter   true
 alignmentFrame  RGB
+
+[DEPTH_FILTER]
+enableHoleFilling true
+holeFillingMode   1
 
 [HW_DESCRIPTION]
 clipPlanes (0.2 10.0)
