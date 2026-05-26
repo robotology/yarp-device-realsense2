@@ -874,6 +874,12 @@ bool realsense2Driver::open(Searchable& config)
         }
     }
 
+    if(config.check("rotateIRImage180")){
+        m_rotateIRImage180 = config.find("rotateIRImage180").asBool();
+        if (m_rotateIRImage180) {
+            yCInfo(REALSENSE2) << "parameter rotateIRImage180 enabled, infrared images are rotated";
+        }
+    }
     m_verbose = config.check("verbose");
     
     if (config.check("serialnumber")) {
@@ -1725,6 +1731,24 @@ bool realsense2Driver::getImage(yarp::sig::ImageOf<yarp::sig::PixelMono>& image)
     ImageOf<PixelMono> imgL, imgR;
     imgL.setExternal((unsigned char*) (frm1.get_data()), frm1.get_width(), frm1.get_height());
     imgR.setExternal((unsigned char*) (frm2.get_data()), frm2.get_width(), frm2.get_height());
+
+    if (m_rotateIRImage180)
+    {
+        ImageOf<PixelMono> rotatedL, rotatedR;
+        rotatedL.resize(imgL.width(), imgL.height());
+        rotatedR.resize(imgR.width(), imgR.height());
+        for (size_t y = 0; y < imgL.height(); y++)
+        {
+            for (size_t x = 0; x < imgL.width(); x++)
+            {
+                rotatedL.pixel(x, y) = imgL.pixel(imgL.width() - x - 1, imgL.height() - y - 1);
+                rotatedR.pixel(x, y) = imgR.pixel(imgR.width() - x - 1, imgR.height() - y - 1);
+            }
+        }
+        // A 180-degree correction also reverses the physical left/right sensor order.
+        return utils::horzConcat(rotatedR, rotatedL, image);
+    }
+
     return utils::horzConcat(imgL, imgR, image);
 }
 
