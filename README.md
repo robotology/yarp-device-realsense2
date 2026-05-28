@@ -291,6 +291,7 @@ Parameters used by this device are:
 |  `stereoMode`                |     -             | bool           | Read / write |         |   false       |  No(see notes)  | Flag for using the realsense as stereo camera                                         |  This option is to use it with yarp::dev::ServerGrabber as network wrapper. The stereo images provided are raw images(yarp::sig::PixelMono) and note that not all the realsense devices have the stereo streams. |
 |  `verbose`                   |     -             | bool           | Read / write |         |   false       |  No             | Flag for enabling debug prints                                                        |                                                                       |
 |  `rotateImage180`            |                   | bool           | Read / write | -       |   -           |  No             | Flag for enabling rotating the image 180 degrees                                      |  Parameter useful when a camera is mounted upside down |
+|  `rotateIRImage180`          |                   | bool           | Read / write | -       |   false       |  No             | Flag for rotating the infrared stereo images 180 degrees                              |  Each infrared image is rotated and their order is corrected for a camera mounted upside down. |
 |  `SETTINGS`                  |     -             | group          | Read / write | -       |   -           |  Yes            | Initial setting of the device.                                                        |  Properties must be read/writable in order for setting to work        |
 |                              | `rgbResolution`   | int, int       | Read / write | pixels  |   -           |  Yes            | Size of rgb image in pixels                                                           |  2 values expected as height, width                                   |
 |                              | `depthResolution` | int, int       | Read / write | pixels  |   -           |  Yes            | Size of depth image in pixels                                                         |  Values are height, width                                             |
@@ -356,4 +357,3 @@ This repository is maintained by:
 | | |
 |:---:|:---:|
 | [<img src="https://github.com/Nicogene.png" width="40">](https://github.com/Nicogene) | [@Nicogene](https://github.com/Nicogene) |
-

@@ -149,6 +149,7 @@ protected:
     float m_scale;
     bool m_rotateImage180{false};
     std::string m_serialnumber;
+    bool m_rotateIRImage180{false};
     std::vector<cameraFeature_id_t> m_supportedFeatures;
 
     // Depth post-processing filters
