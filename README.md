@@ -200,9 +200,43 @@ alignmentFrame  None      # <-- alignment set to None
 clipPlanes (0.01 10.0)    # <-- lower bound for clipping planes set to 0.01 meters
 ```
 
-### How to use a RealSense D435i
+### How to use a RealSense camera with IMU (D435i, D455)
 
-:construction: UNDER CONSTRUCTION :construction:
+Use the `realsense2withIMU` device. It accepts all the parameters of `realsense2` and also exposes the
+`IThreeAxisGyroscopes`, `IThreeAxisLinearAccelerometers` and `IOrientationSensors` interfaces.
+The IMU is acquired independently from the RGBD pipeline (librealsense motion sensor callback), at the
+IMU native rate, so attach the same device to both an `RGBDSensor_nws_yarp` and a `multipleanalogsensorsserver`:
+
+```xml
+<device name="realsense2dev" type="realsense2withIMU">
+    <!-- SETTINGS / HW_DESCRIPTION groups as for realsense2 -->
+    <param name="gyroFps">  0 </param>
+    <param name="accelFps"> 0 </param>
+</device>
+<device name="IMUWrapper" type="multipleanalogsensorsserver">
+    <param name="period"> 2 </param>
+    <param name="name">   /camera/imu </param>
+    <action phase="startup" level="5" type="attach">
+        <paramlist name="networks"> <elem name="subdeviceimu"> realsense2dev </elem> </paramlist>
+    </action>
+    <action phase="shutdown" level="5" type="detach" />
+</device>
+```
+
+| Parameter       | Type   | Default               | Description |
+|:---------------:|:------:|:---------------------:|:------------|
+| `gyroFps`       | int    | 0                     | Gyroscope rate in Hz, 0 = highest available |
+| `accelFps`      | int    | 0                     | Accelerometer rate in Hz, 0 = highest available |
+| `imuNamePrefix` | string | `realsense`           | Prefix of the sensor names (`<prefix>/gyro_sensor`, ...) |
+| `imuFrameName`  | string | `realsense_imu_frame` | Frame name of the gyroscope, accelerometer and orientation sensors |
+
+:bulb: **NOTE:** the `multipleanalogsensorsserver` publishes only the latest sample, so its `period` (ms) should be shorter than the IMU sample period.
+
+:bulb: **NOTE:** all IMU data is expressed in the frame used by librealsense for the motion streams, aligned with the camera optical frame: x right, y down, z forward (looking out of the camera). `rotateImage180` rotates only the images, not the IMU data. Gyroscope in deg/s, accelerometer in m/s^2 (at rest it measures +9.81 along the up direction).
+
+:warning: The orientation is a complementary filter. It is the orientation of the IMU frame with respect to a world frame with z up, as roll, pitch, yaw (deg) with R = Rz(yaw) * Ry(pitch) * Rx(roll): a level camera looking forward reads about (-90, 0, -90). Roll and pitch are corrected by the accelerometer; yaw is pure gyro integration, it starts with the camera forward axis along the world x axis and drifts.
+
+:warning: The IMU must be visible to librealsense (`rs-enumerate-devices` must list a `Motion Module`). On kernels without the `hid-sensor` modules (e.g. NVIDIA Jetson), build librealsense with `-DFORCE_RSUSB_BACKEND=ON`.
 
 ### How to use a RealSense T265
 
@@ -298,6 +332,8 @@ Parameters used by this device are:
 |                              | `accuracy`        | double         | Read / write | meters  |   -           |  No             | Accuracy of the device, as the depth measurement error at 1 meter distance            |  Note that only few realsense devices allows to set it                |
 |                              | `framerate`       | int            | Read / Write | fps     |   30          |  No             | Framerate of the sensor                                                               |                                                                       |
 |                              | `enableEmitter`   | bool           | Read / Write | -       |   true        |  No             | Flag for enabling the IR emitter(if supported by the sensor)                          |                                                                       |
+|                              | `depthAutoExposure` | bool         | Write        | -       |   -           |  No             | Enable/disable the auto exposure of the depth sensor. If omitted, the camera setting is left unchanged | Disable it with `depthExposure` if the depth periodically saturates and recovers (auto-exposure hunting) |
+|                              | `depthExposure`   | double         | Write        | us      |   -           |  No             | Manual exposure of the depth sensor, used when `depthAutoExposure` is false           | e.g. 13000 indoors with the emitter on                                |
 |                              | `needAlignment`   | bool           | Read / Write | -       |   true        |  No             | Flag for enabling the alignment of the depth frame over the rgb frame                 |  This option is deprecated, please use alignmentFrame instead.        |
 |                              | `alignmentFrame`  | string         | Read / Write | -       |   RGB         |  No             | This parameter specifies the frame to which the frames RGB and Depth will be aligned. |  The accepted values are RGB, Depth, None. This operation could be heavy, set it to None to increase the fps.|
 |  `DEPTH_FILTER`              |     -             | group          | Read / write | -       |   -           |  No             | Optional depth post-processing filter settings.                                        |  Parameters in this group are parsed at startup.                      |

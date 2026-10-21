@@ -10,6 +10,7 @@
 
 #include <yarp/os/Value.h>
 #include <yarp/os/LogComponent.h>
+#include <yarp/os/Time.h>
 
 #include <yarp/sig/ImageUtils.h>
 
@@ -40,295 +41,350 @@ YARP_LOG_COMPONENT(REALSENSE2WITHIMU, "yarp.device.realsense2withIMU")
 }
 
 
-struct float3 {
-    float x;
-    float y;
-    float z;
-
-    float3 operator*(float t)
-    {
-        return { x * t, y * t, z * t };
-    }
-
-    float3 operator-(float t)
-    {
-        return { x - t, y - t, z - t };
-    }
-
-    void operator*=(float t)
-    {
-        x = x * t;
-        y = y * t;
-        z = z * t;
-    }
-
-    void add(float t1, float t2, float t3)
-    {
-        x += t1;
-        y += t2;
-        z += t3;
-    }
+namespace {
+struct vec3 {
+    double x{0.0};
+    double y{0.0};
+    double z{0.0};
 };
 
+double dot(const vec3& a, const vec3& b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
+vec3 cross(const vec3& a, const vec3& b) { return { a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x }; }
+double norm(const vec3& a) { return std::sqrt(dot(a, a)); }
+
+// Unit quaternion, w + xi + yj + zk
+struct quat {
+    double w{1.0};
+    double x{0.0};
+    double y{0.0};
+    double z{0.0};
+};
+
+quat operator*(const quat& a, const quat& b)
+{
+    return { a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z,
+             a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y,
+             a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x,
+             a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w };
+}
+
+quat normalized(const quat& q)
+{
+    double n = std::sqrt(q.w * q.w + q.x * q.x + q.y * q.y + q.z * q.z);
+    return { q.w / n, q.x / n, q.y / n, q.z / n };
+}
+
+// Rotation of angle |v| (rad) around v
+quat fromRotationVector(const vec3& v)
+{
+    double angle = norm(v);
+    if (angle < 1e-12) {
+        return normalized({ 1.0, v.x / 2, v.y / 2, v.z / 2 });
+    }
+    double s = std::sin(angle / 2) / angle;
+    return { std::cos(angle / 2), v.x * s, v.y * s, v.z * s };
+}
+
+vec3 rotate(const quat& q, const vec3& v)
+{
+    quat r = q * quat{ 0.0, v.x, v.y, v.z } * quat{ q.w, -q.x, -q.y, -q.z };
+    return { r.x, r.y, r.z };
+}
+} // namespace
+
+/* Complementary filter estimating the orientation of the IMU frame (the camera optical frame as reported by
+   librealsense: x right, y down, z forward) with respect to a world frame with z up (opposite to gravity).
+   The gyroscope is integrated at every sample; every accelerometer sample rotates the estimate by a fraction
+   (1 - alpha) of the tilt error, around a horizontal axis, so it corrects roll and pitch but never yaw.
+   Yaw is pure gyro integration: it starts at 0 with the camera forward axis (z) along the world x axis and drifts. */
 class rotation_estimator
 {
-    // theta is the angle of camera rotation in x, y and z components
-    float3 theta;
-    std::mutex theta_mtx;
-    /* alpha indicates the part that gyro and accelerometer take in computation of theta; higher alpha gives more weight to gyro, but too high
-    values cause drift; lower alpha gives more weight to accelerometer, which is more sensitive to disturbances */
-    float alpha = 0.98;
-    bool first = true;
-    // Keeps the arrival time of previous gyro frame
-    double last_ts_gyro = 0;
+    // Orientation of the IMU frame in the world frame
+    quat q;
+    std::mutex q_mtx;
+    // Higher alpha gives more weight to the gyro (smoother, more drift); lower alpha to the accelerometer (noisier)
+    double alpha = 0.98;
+    // Accelerometer samples whose norm differs from gravity by more than this fraction are not used (camera accelerating)
+    double accel_norm_tolerance = 0.15;
+    double gravity = 9.81;
+    bool initialized = false;
+    // Previous gyro timestamp (ms), < 0 if none
+    double last_ts_gyro = -1.0;
 public:
-    // Function to calculate the change in angle of motion based on data from gyro
+    // gyro_data in rad/s, ts in ms
     void process_gyro(rs2_vector gyro_data, double ts)
     {
-        if (first) // On the first iteration, use only data from accelerometer to set the camera's initial position
-        {
-            last_ts_gyro = ts;
+        std::lock_guard<std::mutex> lock(q_mtx);
+        double dt = (ts - last_ts_gyro) / 1000.0;
+        bool valid = initialized && last_ts_gyro >= 0.0 && dt > 0.0 && dt < 0.1;
+        last_ts_gyro = ts;
+        if (!valid) {
             return;
         }
-        // Holds the change in angle, as calculated from gyro
-        float3 gyro_angle;
-
-        // Initialize gyro_angle with data from gyro
-        gyro_angle.x = gyro_data.x; // Pitch
-        gyro_angle.y = gyro_data.y; // Yaw
-        gyro_angle.z = gyro_data.z; // Roll
-
-        // Compute the difference between arrival times of previous and current gyro frames
-        double dt_gyro = (ts - last_ts_gyro) / 1000.0;
-        last_ts_gyro = ts;
-
-        // Change in angle equals gyro measures * time passed since last measurement
-        gyro_angle = gyro_angle * dt_gyro;
-
-        // Apply the calculated change of angle to the current angle (theta)
-        std::lock_guard<std::mutex> lock(theta_mtx);
-        theta.add(-gyro_angle.z, -gyro_angle.y, gyro_angle.x);
+        // The angular velocity is expressed in the IMU frame, so the increment is applied on the right
+        q = normalized(q * fromRotationVector({ gyro_data.x * dt, gyro_data.y * dt, gyro_data.z * dt }));
     }
 
+    // accel_data in m/s^2 (specific force: at rest it points up)
     void process_accel(rs2_vector accel_data)
     {
-        // Holds the angle as calculated from accelerometer data
-        float3 accel_angle;
-
-        // Calculate rotation angle from accelerometer data
-        accel_angle.z = atan2(accel_data.y, accel_data.z);
-        accel_angle.x = atan2(accel_data.x, sqrt(accel_data.y * accel_data.y + accel_data.z * accel_data.z));
-        accel_angle.y = 0; //ADDED by randaz81
-
-        // If it is the first iteration, set initial pose of camera according to accelerometer data (note the different handling for Y axis)
-        std::lock_guard<std::mutex> lock(theta_mtx);
-        if (first)
-        {
-            first = false;
-            theta = accel_angle;
-            // Since we can't infer the angle around Y axis using accelerometer data, we'll use PI as a convetion for the initial pose
-            theta.y = M_PI;
+        vec3 a{ accel_data.x, accel_data.y, accel_data.z };
+        double n = norm(a);
+        if (n < 1e-6) {
+            return;
         }
-        else
+        vec3 up_imu{ a.x / n, a.y / n, a.z / n };
+
+        std::lock_guard<std::mutex> lock(q_mtx);
+        if (!initialized)
         {
-            /*
-            Apply Complementary Filter:
-                - high-pass filter = theta * alpha:  allows short-duration signals to pass through while filtering out signals
-                  that are steady over time, is used to cancel out drift.
-                - low-pass filter = accel * (1- alpha): lets through long term changes, filtering out short term fluctuations
-            */
-            theta.x = theta.x * alpha + accel_angle.x * (1 - alpha);
-            theta.z = theta.z * alpha + accel_angle.z * (1 - alpha);
+            // Rows of the rotation matrix (world <- IMU) are the world axes in IMU coordinates:
+            // z up, x the camera forward axis projected on the horizontal plane (the camera x axis if looking up/down)
+            vec3 fwd{ 0.0, 0.0, 1.0 };
+            if (std::abs(dot(fwd, up_imu)) > 0.99) {
+                fwd = { 1.0, 0.0, 0.0 };
+            }
+            double d = dot(fwd, up_imu);
+            vec3 wx{ fwd.x - d * up_imu.x, fwd.y - d * up_imu.y, fwd.z - d * up_imu.z };
+            double nx = norm(wx);
+            wx = { wx.x / nx, wx.y / nx, wx.z / nx };
+            vec3 wy = cross(up_imu, wx);
+            const vec3& wz = up_imu;
+            double r00 = wx.x, r01 = wx.y, r02 = wx.z;
+            double r10 = wy.x, r11 = wy.y, r12 = wy.z;
+            double r20 = wz.x, r21 = wz.y, r22 = wz.z;
+            double tr = r00 + r11 + r22;
+            if (tr > 0) {
+                double s = 2.0 * std::sqrt(tr + 1.0);
+                q = { s / 4, (r21 - r12) / s, (r02 - r20) / s, (r10 - r01) / s };
+            } else if (r00 > r11 && r00 > r22) {
+                double s = 2.0 * std::sqrt(1.0 + r00 - r11 - r22);
+                q = { (r21 - r12) / s, s / 4, (r01 + r10) / s, (r02 + r20) / s };
+            } else if (r11 > r22) {
+                double s = 2.0 * std::sqrt(1.0 + r11 - r00 - r22);
+                q = { (r02 - r20) / s, (r01 + r10) / s, s / 4, (r12 + r21) / s };
+            } else {
+                double s = 2.0 * std::sqrt(1.0 + r22 - r00 - r11);
+                q = { (r10 - r01) / s, (r02 + r20) / s, (r12 + r21) / s, s / 4 };
+            }
+            q = normalized(q);
+            initialized = true;
+            return;
         }
+
+        if (std::abs(n - gravity) > accel_norm_tolerance * gravity) {
+            return;
+        }
+        // Measured up direction in the world frame, and the rotation that brings it on the world z axis
+        vec3 up_world = rotate(q, up_imu);
+        vec3 axis = cross(up_world, { 0.0, 0.0, 1.0 });
+        double s = norm(axis);
+        if (s < 1e-9) {
+            return;
+        }
+        double angle = std::atan2(s, up_world.z) * (1.0 - alpha);
+        q = normalized(fromRotationVector({ axis.x / s * angle, axis.y / s * angle, axis.z / s * angle }) * q);
     }
 
-    // Returns the current rotation angle
-    float3 get_theta()
+    // Roll, pitch, yaw (rad) of the IMU frame in the world frame, with R = Rz(yaw) * Ry(pitch) * Rx(roll)
+    bool get_rpy(double& roll, double& pitch, double& yaw)
     {
-        std::lock_guard<std::mutex> lock(theta_mtx);
-        return theta;
+        std::lock_guard<std::mutex> lock(q_mtx);
+        if (!initialized) {
+            return false;
+        }
+        roll  = std::atan2(2.0 * (q.w * q.x + q.y * q.z), 1.0 - 2.0 * (q.x * q.x + q.y * q.y));
+        pitch = std::asin(std::clamp(2.0 * (q.w * q.y - q.z * q.x), -1.0, 1.0));
+        yaw   = std::atan2(2.0 * (q.w * q.z + q.x * q.y), 1.0 - 2.0 * (q.y * q.y + q.z * q.z));
+        return true;
     }
 };
 
 //---------------------------------------------------------------
 
-#if 0
-static std::string get_device_information(const rs2::device& dev)
+static bool selectMotionProfile(const rs2::sensor& sensor, rs2_stream stream, int requested_fps, rs2::stream_profile& selected)
 {
-
-    std::stringstream ss;
-    ss << "Device information: " << std::endl;
-
-    for (int i = 0; i < static_cast<int>(RS2_CAMERA_INFO_COUNT); i++) {
-        auto info_type = static_cast<rs2_camera_info>(i);
-        ss << "  " << std::left << std::setw(20) << info_type << " : ";
-
-        if (dev.supports(info_type))
-            ss << dev.get_info(info_type) << std::endl;
-        else
-            ss << "N/A" << std::endl;
+    bool found = false;
+    std::string available;
+    for (const auto& profile : sensor.get_stream_profiles())
+    {
+        if (profile.stream_type() != stream || profile.format() != RS2_FORMAT_MOTION_XYZ32F) {
+            continue;
+        }
+        available += " " + std::to_string(profile.fps());
+        if (requested_fps == 0 ? (!found || profile.fps() > selected.fps()) : profile.fps() == requested_fps)
+        {
+            selected = profile;
+            found = true;
+        }
     }
-    return ss.str();
+    if (!found) {
+        yCError(REALSENSE2WITHIMU) << "No" << rs2_stream_to_string(stream) << "profile at" << requested_fps << "Hz. Available rates:" << available;
+    }
+    return found;
 }
 
-static bool setOption(rs2_option option, const rs2::sensor* sensor, float value)
+// Converts the frame timestamp (ms) to seconds, in the same clock as yarp::os::Time::now() when possible
+static double frameTimestampInSeconds(const rs2::frame& frame)
 {
-
-    if (!sensor) {
-        return false;
+    auto domain = frame.get_frame_timestamp_domain();
+    if (domain == RS2_TIMESTAMP_DOMAIN_GLOBAL_TIME || domain == RS2_TIMESTAMP_DOMAIN_SYSTEM_TIME) {
+        return frame.get_timestamp() / 1000.0;
     }
-
-    // First, verify that the sensor actually supports this option
-    if (!sensor->supports(option)) {
-        yCError(REALSENSE2WITHIMU) << "The option" << rs2_option_to_string(option) << "is not supported by this sensor";
-        return false;
-    }
-
-    // To set an option to a different value, we can call set_option with a new value
-    try {
-        sensor->set_option(option, value);
-    } catch (const rs2::error& e) {
-        // Some options can only be set while the camera is streaming,
-        // and generally the hardware might fail so it is good practice to catch exceptions from set_option
-        yCError(REALSENSE2WITHIMU) << "Failed to set option " << rs2_option_to_string(option) << ". (" << e.what() << ")";
-        return false;
-    }
-    return true;
+    return yarp::os::Time::now();
 }
-
-static bool getOption(rs2_option option, const rs2::sensor* sensor, float& value)
-{
-    if (!sensor) {
-        return false;
-    }
-
-    // First, verify that the sensor actually supports this option
-    if (!sensor->supports(option)) {
-        yCError(REALSENSE2WITHIMU) << "The option" << rs2_option_to_string(option) << "is not supported by this sensor";
-        return false;
-    }
-
-    // To set an option to a different value, we can call set_option with a new value
-    try {
-        value = sensor->get_option(option);
-    } catch (const rs2::error& e) {
-        // Some options can only be set while the camera is streaming,
-        // and generally the hardware might fail so it is good practice to catch exceptions from set_option
-        yCError(REALSENSE2WITHIMU) << "Failed to get option " << rs2_option_to_string(option) << ". (" << e.what() << ")";
-        return false;
-    }
-    return true;
-}
-
-static void settingErrorMsg(const string& error, bool& ret)
-{
-    yCError(REALSENSE2WITHIMU) << error.c_str();
-    ret = false;
-}
-#endif
 
 realsense2withIMUDriver::realsense2withIMUDriver() :
         realsense2Driver()
 {
-    m_rotation_estimator=nullptr;
 }
 
-#if 0
-bool realsense2withIMUDriver::pipelineStartup()
-{
-    try {
-        m_profile = m_pipeline.start(m_cfg);
-    } catch (const rs2::error& e) {
-        yCError(REALSENSE2WITHIMU) << "Failed to start the pipeline:"
-                 << "(" << e.what() << ")";
-        m_lastError = e.what();
-        return false;
-    }
-    return true;
-}
-
-bool realsense2withIMUDriver::pipelineShutdown()
-{
-    try {
-        m_pipeline.stop();
-    } catch (const rs2::error& e) {
-        yCError(REALSENSE2WITHIMU) << "Failed to stop the pipeline:"
-                 << "(" << e.what() << ")";
-        m_lastError = e.what();
-        return false;
-    }
-    return true;
-}
-
-bool realsense2withIMUDriver::pipelineRestart()
-{
-    std::lock_guard<std::mutex> guard(m_mutex);
-    if (!pipelineShutdown())
-        return false;
-
-    return pipelineStartup();
-}
-
-
-void realsense2Driver::fallback()
-{
-    m_cfg.enable_stream(RS2_STREAM_COLOR, m_color_intrin.width, m_color_intrin.height, RS2_FORMAT_RGB8, m_fps);
-    m_cfg.enable_stream(RS2_STREAM_DEPTH, m_depth_intrin.width, m_depth_intrin.height, RS2_FORMAT_Z16, m_fps);
-    yCWarning(REALSENSE2WITHIMU) << "Format not supported, use --verbose for more details. Setting the fallback format";
-    std::cout << "COLOR: " << m_color_intrin.width << "x" << m_color_intrin.height << " fps: " << m_fps << std::endl;
-    std::cout << "DEPTH: " << m_depth_intrin.width << "x" << m_depth_intrin.height << " fps: " << m_fps << std::endl;
-}
-#endif
+realsense2withIMUDriver::~realsense2withIMUDriver() = default;
 
 bool realsense2withIMUDriver::open(Searchable& config)
 {
     yCWarning(REALSENSE2WITHIMU) << "This software module is experimental.";
     yCWarning(REALSENSE2WITHIMU) << "It is provided with uncomplete documentation and it may be modified/renamed/removed without any notice.";
 
-    string sensor_is = "d435i";
-    bool b = true;
+    m_gyroFps  = config.check("gyroFps", Value(0)).asInt32();
+    m_accelFps = config.check("accelFps", Value(0)).asInt32();
+    m_inertial_sensor_name_prefix = config.check("imuNamePrefix", Value("realsense")).asString();
+    m_gyroFrameName = m_accelFrameName = m_orientationFrameName = config.check("imuFrameName", Value("realsense_imu_frame")).asString();
 
-    if (sensor_is == "d435")
-    {
-        b &= realsense2Driver::open(config);
-        //m_sensor_has_pose_capabilities = false;
-        m_sensor_has_orientation_estimator = false;
-    }
-    else if (sensor_is == "d435i")
-    {
-        b &= realsense2Driver::open(config);
-        //m_sensor_has_pose_capabilities = false;
-        m_sensor_has_orientation_estimator = true;
-        m_cfg.enable_stream(RS2_STREAM_ACCEL, RS2_FORMAT_MOTION_XYZ32F);
-        m_cfg.enable_stream(RS2_STREAM_GYRO, RS2_FORMAT_MOTION_XYZ32F);
-        b &= pipelineRestart();
-    }
-    /*
-    //T265 is very diffcukt to implement without major refactoring.
-    //here some infos, just for reference
-    else if(sensor_is == "t265")
-    {
-        b &= realsense2Driver::open(config);
-        m_sensor_has_pose_capabilities = true;
-        m_sensor_has_orientation_estimator = false;
-        m_cfg.enable_stream(RS2_STREAM_ACCEL, RS2_FORMAT_MOTION_XYZ32F);
-        m_cfg.enable_stream(RS2_STREAM_GYRO, RS2_FORMAT_MOTION_XYZ32F);
-        m_cfg.enable_stream(RS2_STREAM_POSE, RS2_FORMAT_6DOF);
-        b &= pipelineRestart();
-    }*/
-    else
-    {
-        yCError(REALSENSE2WITHIMU) << "Unkwnon device";
+    // The RGBD pipeline only contains the image streams; the IMU is handled separately
+    if (!realsense2Driver::open(config)) {
         return false;
     }
 
-    return b;
+    if (!motionSensorStartup())
+    {
+        close();
+        return false;
+    }
+    return true;
 }
 
 bool realsense2withIMUDriver::close()
 {
+    motionSensorShutdown();
     pipelineShutdown();
     return true;
+}
+
+bool realsense2withIMUDriver::motionSensorStartup()
+{
+    // Take the sensor from the device the pipeline is running on: m_sensors may belong to a device
+    // instance replaced by a pipeline restart, whose idle depth sensor gets powered up by every
+    // global time sync request (leaking a USB handle each time with the RSUSB backend).
+    std::vector<rs2::sensor> sensors;
+    try
+    {
+        sensors = m_pipeline.get_active_profile().get_device().query_sensors();
+    }
+    catch (const rs2::error& e)
+    {
+        yCError(REALSENSE2WITHIMU) << "Failed to query the device sensors:" << "(" << e.what() << ")";
+        m_lastError = e.what();
+        return false;
+    }
+    auto it = std::find_if(sensors.begin(), sensors.end(), [](const rs2::sensor& s) { return s.is<rs2::motion_sensor>(); });
+    if (it == sensors.end())
+    {
+        yCError(REALSENSE2WITHIMU) << "The camera has no IMU, use the realsense2 device instead";
+        return false;
+    }
+    m_motion_sensor = *it;
+
+    rs2::stream_profile gyro_profile;
+    rs2::stream_profile accel_profile;
+    if (!selectMotionProfile(m_motion_sensor, RS2_STREAM_GYRO, m_gyroFps, gyro_profile) ||
+        !selectMotionProfile(m_motion_sensor, RS2_STREAM_ACCEL, m_accelFps, accel_profile))
+    {
+        return false;
+    }
+
+    if (!m_rotation_estimator) {
+        m_rotation_estimator = std::make_unique<rotation_estimator>();
+    }
+    try
+    {
+        m_motion_sensor.open({gyro_profile, accel_profile});
+        m_motion_sensor.start([this](const rs2::frame& frame) { onMotionFrame(frame); });
+    }
+    catch (const rs2::error& e)
+    {
+        yCError(REALSENSE2WITHIMU) << "Failed to start the motion sensor:" << "(" << e.what() << ")";
+        m_lastError = e.what();
+        return false;
+    }
+    m_motion_started = true;
+    yCInfo(REALSENSE2WITHIMU) << "IMU started: gyro" << gyro_profile.fps() << "Hz, accel" << accel_profile.fps() << "Hz";
+    return true;
+}
+
+// A pipeline restart may replace the device instance: reopen the motion sensor on the new one,
+// otherwise the stale instance keeps leaking USB handles (see motionSensorStartup)
+bool realsense2withIMUDriver::onPipelineRestarted()
+{
+    if (!m_motion_started) {
+        return true;
+    }
+    motionSensorShutdown();
+    return motionSensorStartup();
+}
+
+void realsense2withIMUDriver::motionSensorShutdown()
+{
+    if (!m_motion_started) {
+        return;
+    }
+    try
+    {
+        // stop() waits for a running callback to return
+        m_motion_sensor.stop();
+        m_motion_sensor.close();
+    }
+    catch (const rs2::error& e)
+    {
+        yCError(REALSENSE2WITHIMU) << "Failed to stop the motion sensor:" << "(" << e.what() << ")";
+        m_lastError = e.what();
+    }
+    m_motion_started = false;
+}
+
+// Called by librealsense in its own thread for every IMU sample
+void realsense2withIMUDriver::onMotionFrame(const rs2::frame& frame)
+{
+    auto motion = frame.as<rs2::motion_frame>();
+    if (!motion) {
+        return;
+    }
+    rs2_vector data = motion.get_motion_data();
+    double ts = frameTimestampInSeconds(motion);
+
+    switch (motion.get_profile().stream_type())
+    {
+    case RS2_STREAM_GYRO:
+        m_rotation_estimator->process_gyro(data, motion.get_timestamp());
+        {
+            std::lock_guard<std::mutex> guard(m_imu_mutex);
+            m_last_gyro = data;
+            m_last_gyro_ts = ts;
+            m_gyro_received = true;
+        }
+        break;
+    case RS2_STREAM_ACCEL:
+        m_rotation_estimator->process_accel(data);
+        {
+            std::lock_guard<std::mutex> guard(m_imu_mutex);
+            m_last_accel = data;
+            m_last_accel_ts = ts;
+            m_accel_received = true;
+        }
+        break;
+    default:
+        break;
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------
@@ -341,7 +397,8 @@ size_t realsense2withIMUDriver::getNrOfThreeAxisGyroscopes() const
 yarp::dev::MAS_status realsense2withIMUDriver::getThreeAxisGyroscopeStatus(size_t sens_index) const
 {
     if (sens_index != 0) { return yarp::dev::MAS_status::MAS_UNKNOWN; }
-    return yarp::dev::MAS_status::MAS_OK;
+    std::lock_guard<std::mutex> guard(m_imu_mutex);
+    return m_gyro_received ? yarp::dev::MAS_status::MAS_OK : yarp::dev::MAS_status::MAS_WAITING_FOR_FIRST_READ;
 }
 
 bool realsense2withIMUDriver::getThreeAxisGyroscopeName(size_t sens_index, std::string& name) const
@@ -360,29 +417,15 @@ bool realsense2withIMUDriver::getThreeAxisGyroscopeFrameName(size_t sens_index, 
 
 bool realsense2withIMUDriver::getThreeAxisGyroscopeMeasure(size_t sens_index, yarp::sig::Vector& out, double& timestamp) const
 {
-    if (sens_index != 0) {
-        return false;
-    }
-
-    std::lock_guard<std::mutex> guard(realsense2Driver::m_mutex);
-    rs2::frameset dataframe;
-    try
-    {
-        dataframe = m_pipeline.wait_for_frames();
-    }
-    catch (const rs2::error& e)
-    {
-        yCError(REALSENSE2WITHIMU) << "m_pipeline.wait_for_frames() failed with error:"<< "(" << e.what() << ")";
-        m_lastError = e.what();
-        return false;
-    }
-    auto fg = dataframe.first(RS2_STREAM_GYRO, RS2_FORMAT_MOTION_XYZ32F);
-    rs2::motion_frame gyro = fg.as<rs2::motion_frame>();
-    m_last_gyro = gyro.get_motion_data();
+    if (sens_index != 0) { return false; }
+    std::lock_guard<std::mutex> guard(m_imu_mutex);
+    if (!m_gyro_received) { return false; }
+    // librealsense gives rad/s, the YARP interface uses deg/s
     out.resize(3);
-    out[0] = m_last_gyro.x;
-    out[1] = m_last_gyro.y;
-    out[2] = m_last_gyro.z;
+    out[0] = m_last_gyro.x * 180.0 / M_PI;
+    out[1] = m_last_gyro.y * 180.0 / M_PI;
+    out[2] = m_last_gyro.z * 180.0 / M_PI;
+    timestamp = m_last_gyro_ts;
     return true;
 }
 
@@ -397,7 +440,8 @@ size_t realsense2withIMUDriver::getNrOfThreeAxisLinearAccelerometers() const
 yarp::dev::MAS_status realsense2withIMUDriver::getThreeAxisLinearAccelerometerStatus(size_t sens_index) const
 {
     if (sens_index != 0) { return yarp::dev::MAS_status::MAS_UNKNOWN; }
-    return yarp::dev::MAS_status::MAS_OK;
+    std::lock_guard<std::mutex> guard(m_imu_mutex);
+    return m_accel_received ? yarp::dev::MAS_status::MAS_OK : yarp::dev::MAS_status::MAS_WAITING_FOR_FIRST_READ;
 }
 
 bool realsense2withIMUDriver::getThreeAxisLinearAccelerometerName(size_t sens_index, std::string& name) const
@@ -416,50 +460,35 @@ bool realsense2withIMUDriver::getThreeAxisLinearAccelerometerFrameName(size_t se
 
 bool realsense2withIMUDriver::getThreeAxisLinearAccelerometerMeasure(size_t sens_index, yarp::sig::Vector& out, double& timestamp) const
 {
-    std::lock_guard<std::mutex> guard(m_mutex);
-    rs2::frameset dataframe;
-    try
-    {
-        dataframe = m_pipeline.wait_for_frames();
-    }
-    catch (const rs2::error& e)
-    {
-        yCError(REALSENSE2WITHIMU) << "m_pipeline.wait_for_frames() failed with error:"<< "(" << e.what() << ")";
-        m_lastError = e.what();
-        return false;
-    }
-    auto fa = dataframe.first(RS2_STREAM_ACCEL, RS2_FORMAT_MOTION_XYZ32F);
-    rs2::motion_frame accel = fa.as<rs2::motion_frame>();
-    m_last_accel = accel.get_motion_data();
+    if (sens_index != 0) { return false; }
+    std::lock_guard<std::mutex> guard(m_imu_mutex);
+    if (!m_accel_received) { return false; }
     out.resize(3);
     out[0] = m_last_accel.x;
     out[1] = m_last_accel.y;
     out[2] = m_last_accel.z;
+    timestamp = m_last_accel_ts;
     return true;
 }
 
 //-------------------------------------------------------------------------------------------------------
 
 /* IOrientationSensors methods */
+// Complementary filter: roll and pitch are corrected by the accelerometer, yaw is pure gyro integration and drifts
 size_t realsense2withIMUDriver::getNrOfOrientationSensors() const
 {
-    if (m_sensor_has_orientation_estimator) { return 1; }
-    return 0;
+    return 1;
 }
 
 yarp::dev::MAS_status realsense2withIMUDriver::getOrientationSensorStatus(size_t sens_index) const
 {
-    if (m_sensor_has_orientation_estimator == false) {return yarp::dev::MAS_status::MAS_UNKNOWN; }
     if (sens_index != 0) { return yarp::dev::MAS_status::MAS_UNKNOWN; }
-    return yarp::dev::MAS_status::MAS_OK;
+    std::lock_guard<std::mutex> guard(m_imu_mutex);
+    return (m_gyro_received && m_accel_received) ? yarp::dev::MAS_status::MAS_OK : yarp::dev::MAS_status::MAS_WAITING_FOR_FIRST_READ;
 }
 
 bool realsense2withIMUDriver::getOrientationSensorName(size_t sens_index, std::string& name) const
 {
-    if (m_sensor_has_orientation_estimator==false)
-    {
-        return false;
-    }
     if (sens_index != 0) { return false; }
     name = m_inertial_sensor_name_prefix + "/" + m_orientation_sensor_tag;
     return true;
@@ -467,59 +496,28 @@ bool realsense2withIMUDriver::getOrientationSensorName(size_t sens_index, std::s
 
 bool realsense2withIMUDriver::getOrientationSensorFrameName(size_t sens_index, std::string& frameName) const
 {
-    if (m_sensor_has_orientation_estimator == false)
-    {
-        return false;
-    }
     if (sens_index != 0) { return false; }
     frameName = m_orientationFrameName;
     return true;
 }
 
-
 bool realsense2withIMUDriver::getOrientationSensorMeasureAsRollPitchYaw(size_t sens_index, yarp::sig::Vector& rpy, double& timestamp) const
 {
     if (sens_index != 0) { return false; }
-    if (m_sensor_has_orientation_estimator)
     {
-        std::lock_guard<std::mutex> guard(m_mutex);
-        rs2::frameset dataframe;
-        try
-        {
-            dataframe = m_pipeline.wait_for_frames();
-        }
-        catch (const rs2::error& e)
-        {
-            yCError(REALSENSE2WITHIMU) << "m_pipeline.wait_for_frames() failed with error:"<< "(" << e.what() << ")";
-            m_lastError = e.what();
-            return false;
-        }
-        auto motion = dataframe.as<rs2::motion_frame>();
-        if (motion && motion.get_profile().stream_type() == RS2_STREAM_GYRO &&
-                      motion.get_profile().format() == RS2_FORMAT_MOTION_XYZ32F)
-        {
-            // Get the timestamp of the current frame
-            double ts = motion.get_timestamp();
-            // Get gyro measures
-            rs2_vector gyro_data = motion.get_motion_data();
-            // Call function that computes the angle of motion based on the retrieved measures
-            m_rotation_estimator->process_gyro(gyro_data, ts);
-        }
-        // If casting succeeded and the arrived frame is from accelerometer stream
-        if (motion && motion.get_profile().stream_type() == RS2_STREAM_ACCEL &&
-                      motion.get_profile().format() == RS2_FORMAT_MOTION_XYZ32F)
-        {
-            // Get accelerometer measures
-            rs2_vector accel_data = motion.get_motion_data();
-            // Call function that computes the angle of motion based on the retrieved measures
-            m_rotation_estimator->process_accel(accel_data);
-        }
-        float3 theta = m_rotation_estimator->get_theta();
-        rpy.resize(3);
-        rpy[0] = 0 + theta.x * 180.0 / M_PI; //here we can eventually adjust the sign and/or sum an offset
-        rpy[1] = 0 + theta.y * 180.0 / M_PI;
-        rpy[2] = 0 + theta.z * 180.0 / M_PI;
-        return true;
+        std::lock_guard<std::mutex> guard(m_imu_mutex);
+        if (!m_gyro_received || !m_accel_received) { return false; }
+        timestamp = m_last_gyro_ts;
     }
-    return false;
+    double roll = 0.0;
+    double pitch = 0.0;
+    double yaw = 0.0;
+    if (!m_rotation_estimator->get_rpy(roll, pitch, yaw)) {
+        return false;
+    }
+    rpy.resize(3);
+    rpy[0] = roll * 180.0 / M_PI;
+    rpy[1] = pitch * 180.0 / M_PI;
+    rpy[2] = yaw * 180.0 / M_PI;
+    return true;
 }
